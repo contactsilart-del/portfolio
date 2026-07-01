@@ -10,3 +10,7 @@ npm-debug.log*
 .env*.local
 .vercel
 *.tsbuildinfo
+
+# fichiers temporaires / logs locaux
+scratch_*.log
+.claude/settings.local.json
