@@ -75,6 +75,15 @@ export default function MentionsLegales() {
           )}
           {legal.siret && <p>SIRET : {legal.siret}</p>}
           {legal.tva && <p>TVA intracommunautaire : {legal.tva}</p>}
+          {!legal.siret && (
+            <p>
+              Site édité à titre personnel par une personne physique.
+              Conformément à l&apos;article 6-III-2 de la loi n° 2004-575 du 21
+              juin 2004 (LCEN), les coordonnées postales de l&apos;éditeur ont
+              été communiquées à l&apos;hébergeur et sont disponibles sur simple
+              demande à l&apos;adresse email ci-dessus.
+            </p>
+          )}
         </Bloc>
 
         <Bloc titre="Responsable de la publication">

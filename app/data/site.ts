@@ -10,17 +10,19 @@ export const site = {
 
 /**
  * Infos légales pour la page /mentions-legales.
- * ⚠️ À COMPLÉTER : remplace les champs vides avant la mise en ligne officielle.
  * Les champs laissés vides ("") ne sont pas affichés sur la page.
+ * Choix de l'éditeur : ne pas publier l'adresse ni le SIRET (éditeur
+ * particulier, non immatriculé). Dès qu'un SIRET existe, le renseigner :
+ * la mention "éditeur particulier" disparaît alors automatiquement.
  */
 export const legal = {
   // Éditeur du site
   editeurNom: "Silas Clamens Albert",
-  editeurStatut: "Développeur web freelance — SILART",
-  editeurAdresse: "", // ex : "12 rue Exemple, 81100 Castres, France"
+  editeurStatut: "Développeur web & créatif — SILART",
+  editeurAdresse: "", // volontairement non publiée (communiquée à l'hébergeur)
   editeurEmail: "contact.silart@gmail.com",
-  editeurTelephone: "", // ex : "+33 6 12 34 56 78"
-  siret: "", // n° SIRET si micro-entreprise déclarée
+  editeurTelephone: "", // optionnel
+  siret: "", // à renseigner dès l'immatriculation d'une micro-entreprise
   tva: "", // n° TVA intracommunautaire si applicable
 
   // Responsable de la publication
