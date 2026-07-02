@@ -11,6 +11,14 @@
   }
 }
 
+/* Titre géant en dégradé (design "3D Creator") */
+.hero-heading {
+  background: linear-gradient(180deg, #646973 0%, #bbccd7 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
 @layer components {
   .section {
     @apply mx-auto w-full max-w-5xl px-6;
@@ -22,16 +30,21 @@
     @apply text-sm font-medium uppercase tracking-[0.25em] text-accent;
   }
   .btn-accent {
-    @apply inline-flex items-center justify-center gap-2 rounded-lg bg-accent px-6 py-3
-      font-medium text-white transition-colors hover:bg-[#6a61f0]
-      focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-nuit;
+    @apply inline-flex items-center justify-center gap-2 rounded-full px-8 py-3
+      text-sm font-medium uppercase tracking-widest text-white transition-transform
+      hover:scale-[1.03] sm:px-10 sm:py-3.5 md:text-base;
+    background: linear-gradient(123deg, #18011f 7%, #b600a8 37%, #7621b0 72%, #be4c00 100%);
+    box-shadow: 0px 4px 4px rgba(181, 1, 167, 0.25), 4px 4px 12px #7721b1 inset;
+    outline: 2px solid #ffffff;
+    outline-offset: -3px;
   }
   .btn-ghost {
-    @apply inline-flex items-center justify-center gap-2 rounded-lg border border-white/15 px-6 py-3
-      font-medium text-clair transition-colors hover:border-white/40 hover:bg-white/5;
+    @apply inline-flex items-center justify-center gap-2 rounded-full border-2 border-clair
+      px-8 py-3 text-sm font-medium uppercase tracking-widest text-clair transition-colors
+      hover:bg-clair/10 sm:px-10 sm:py-3.5 md:text-base;
   }
   .carte {
-    @apply rounded-2xl border border-white/10 bg-surface p-6 transition-colors hover:border-accent/40;
+    @apply rounded-3xl border border-white/10 bg-surface p-6 transition-colors hover:border-clair/40;
   }
   .puce-tech {
     @apply rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-sm text-doux;
@@ -42,7 +55,7 @@
 .halo {
   background: radial-gradient(
     600px circle at 50% 0%,
-    rgba(124, 116, 255, 0.18),
+    rgba(187, 204, 215, 0.12),
     transparent 70%
   );
 }

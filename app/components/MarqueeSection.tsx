@@ -1,0 +1,76 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
+import { projets, type Projet } from "@/app/data/projets";
+
+const row1 = projets.filter((p) => p.pole === "dev");
+const row2 = projets.filter((p) => p.pole !== "dev");
+
+function Tuile({ projet }: { projet: Projet }) {
+  return (
+    <Link
+      href={`/projets/${projet.slug}`}
+      className="flex h-[270px] w-[320px] flex-shrink-0 flex-col justify-between rounded-2xl border border-white/10 bg-surface p-6 transition-colors hover:border-clair/50 sm:w-[420px]"
+    >
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-xs uppercase tracking-widest text-accent">
+          {projet.type}
+        </span>
+        {projet.lien && (
+          <span className="text-[10px] uppercase tracking-widest text-doux">
+            En ligne
+          </span>
+        )}
+      </div>
+      <div>
+        <h3 className="text-2xl font-semibold text-clair">{projet.titre}</h3>
+        <p className="mt-2 line-clamp-2 text-sm font-light leading-relaxed text-doux">
+          {projet.resume}
+        </p>
+      </div>
+    </Link>
+  );
+}
+
+function MarqueeRow({
+  items,
+  transform,
+}: {
+  items: Projet[];
+  transform: string;
+}) {
+  return (
+    <div className="flex w-max gap-3" style={{ transform, willChange: "transform" }}>
+      {[...items, ...items, ...items].map((projet, i) => (
+        <Tuile key={`${projet.slug}-${i}`} projet={projet} />
+      ))}
+    </div>
+  );
+}
+
+export default function MarqueeSection() {
+  const sectionRef = useRef<HTMLElement>(null);
+  const [offset, setOffset] = useState(0);
+
+  useEffect(() => {
+    const onScroll = () => {
+      if (!sectionRef.current) return;
+      setOffset(
+        (window.scrollY - sectionRef.current.offsetTop + window.innerHeight) * 0.3
+      );
+    };
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  return (
+    <section ref={sectionRef} className="bg-nuit pb-10 pt-24 sm:pt-32 md:pt-40">
+      <div className="flex flex-col gap-3">
+        <MarqueeRow items={row1} transform={`translateX(${offset - 200}px)`} />
+        <MarqueeRow items={row2} transform={`translateX(${-(offset - 200)}px)`} />
+      </div>
+    </section>
+  );
+}

@@ -1,274 +1,294 @@
 import Link from "next/link";
-import {
-  poles,
-  projetsParPole,
-  experiences,
-  competences,
-} from "@/app/data/projets";
+import { experiences } from "@/app/data/projets";
 import { site } from "@/app/data/site";
+import FadeIn from "@/app/components/FadeIn";
+import Magnet from "@/app/components/Magnet";
+import AnimatedText from "@/app/components/AnimatedText";
+import MarqueeSection from "@/app/components/MarqueeSection";
+import ProjectsStack from "@/app/components/ProjectsStack";
 
 const liensNav = [
   { href: "#projets", label: "Projets" },
-  { href: "#competences", label: "Compétences" },
-  { href: "#parcours", label: "Parcours" },
+  { href: "#services", label: "Services" },
   { href: "#apropos", label: "À propos" },
   { href: "#contact", label: "Contact" },
 ];
 
+const APROPOS_TEXT =
+  "J'ai 20 ans, je suis développeur web full-stack en freelance, en parallèle de mon BUT MMI. Formé au design autant qu'au code, je crée des sites de A à Z : l'idée, la maquette, le développement, la mise en ligne. Construisons quelque chose d'incroyable ensemble !";
+
+const services = [
+  {
+    num: "01",
+    nom: "Sites sur mesure",
+    desc: "Conception et développement de sites complets avec Next.js et React : vitrine, réservation, espace client — du design à la mise en ligne.",
+  },
+  {
+    num: "02",
+    nom: "E-commerce",
+    desc: "Boutiques en ligne sous Shopify ou sur mesure : catalogue, tunnel de vente, paiement Stripe et optimisation de la conversion.",
+  },
+  {
+    num: "03",
+    nom: "UI/UX Design",
+    desc: "Maquettes et interfaces claires, pensées pour l'utilisateur : wireframes, prototypes et design systems fidèles à votre image.",
+  },
+  {
+    num: "04",
+    nom: "Branding & identité",
+    desc: "Logos, identités visuelles et supports print qui donnent une image cohérente et mémorable à votre marque.",
+  },
+  {
+    num: "05",
+    nom: "Audiovisuel & contenu",
+    desc: "Vidéo, photo, drone, montage et color grading pour raconter votre histoire et animer vos réseaux.",
+  },
+];
+
+const pilulesApropos = [
+  {
+    texte: "Next.js & React",
+    classes:
+      "left-[2%] top-[6%] -rotate-6 sm:left-[4%] md:left-[6%]",
+    delay: 0.1,
+    x: -80,
+  },
+  {
+    texte: "UI/UX & Branding",
+    classes: "right-[2%] top-[6%] rotate-3 sm:right-[4%] md:right-[6%]",
+    delay: 0.15,
+    x: 80,
+  },
+  {
+    texte: "Shopify & WordPress",
+    classes:
+      "bottom-[8%] left-[3%] rotate-6 sm:left-[6%] md:left-[10%]",
+    delay: 0.25,
+    x: -80,
+  },
+  {
+    texte: "Vidéo · Photo · Drone",
+    classes:
+      "bottom-[8%] right-[3%] -rotate-3 sm:right-[6%] md:right-[10%]",
+    delay: 0.3,
+    x: 80,
+  },
+];
+
 export default function Home() {
   return (
-    <>
-      {/* Navigation */}
-      <header className="fixed inset-x-0 top-0 z-50 border-b border-white/5 bg-nuit/80 backdrop-blur">
-        <nav className="section flex h-16 items-center justify-between">
-          <Link href="#top" className="text-lg font-semibold tracking-tight">
-            SIL<span className="text-accent">ART</span>
-          </Link>
-          <div className="hidden items-center gap-8 md:flex">
+    <main style={{ overflowX: "clip" }}>
+      {/* ── Hero ─────────────────────────────────────────── */}
+      <section id="top" className="relative flex h-screen flex-col">
+        <div className="halo pointer-events-none absolute inset-0" />
+
+        {/* Navbar */}
+        <FadeIn delay={0} y={-20}>
+          <nav className="flex items-center justify-between px-6 pt-6 md:px-10 md:pt-8">
             {liensNav.map((l) => (
               <a
                 key={l.href}
                 href={l.href}
-                className="text-sm text-doux transition-colors hover:text-clair"
+                className="text-sm font-medium uppercase tracking-wider text-clair transition-opacity duration-200 hover:opacity-70 md:text-lg lg:text-[1.4rem]"
               >
                 {l.label}
               </a>
             ))}
-            <a
-              href={`mailto:${site.email}`}
-              className="btn-accent px-4 py-2 text-sm"
+          </nav>
+        </FadeIn>
+
+        {/* Titre géant */}
+        <div className="flex flex-1 flex-col items-center justify-center overflow-hidden">
+          <FadeIn delay={0.15} y={40}>
+            <h1 className="hero-heading whitespace-nowrap text-center text-[22vw] font-black uppercase leading-none tracking-tight">
+              SILART
+            </h1>
+          </FadeIn>
+          <FadeIn delay={0.35} y={20}>
+            <p
+              className="mt-3 text-center font-light uppercase tracking-[0.3em] text-clair"
+              style={{ fontSize: "clamp(0.75rem, 1.6vw, 1.4rem)" }}
             >
-              Me contacter
-            </a>
-          </div>
-        </nav>
-      </header>
+              Silas Clamens Albert · Développeur web full-stack
+            </p>
+          </FadeIn>
+        </div>
 
-      {/* Hero */}
-      <section id="top" className="relative overflow-hidden">
-        <div className="halo absolute inset-0" />
-        <div className="section relative flex min-h-screen flex-col justify-center py-32">
-          <p className="surtitre animate-fade-up">{site.titrePrincipal}</p>
-          <h1 className="mt-5 max-w-3xl text-5xl font-bold leading-[1.05] tracking-tight sm:text-6xl md:text-7xl">
-            {site.nom}
-          </h1>
-          <p className="mt-4 text-lg font-medium text-doux">{site.slogan}</p>
-          <p className="mt-6 max-w-xl text-lg leading-relaxed text-doux">
-            J&apos;ai 20 ans et je conçois des sites web sur mesure, du design à
-            la mise en ligne. Là où le design visuel rencontre la stratégie
-            digitale — rapides, soignés, et pensés pour tes clients.
-          </p>
-          <div className="mt-10 flex flex-col gap-4 sm:flex-row">
-            <a href="#projets" className="btn-accent">
-              Voir mes projets
-            </a>
-            <a href={`mailto:${site.email}`} className="btn-ghost">
-              Travailler ensemble
-            </a>
-          </div>
-
-          <div className="mt-16 flex flex-wrap gap-x-10 gap-y-4 text-sm text-doux">
-            <span>
-              <span className="text-clair">Basé</span> en France
-            </span>
-            <span>
-              <span className="text-clair">Freelance</span> · BUT MMI 3ᵉ année
-            </span>
-            <span>
-              <span className="text-clair">Dispo</span> pour de nouveaux projets
-            </span>
-          </div>
+        {/* Barre du bas */}
+        <div className="z-20 flex items-end justify-between gap-6 px-6 pb-7 sm:pb-8 md:px-10 md:pb-10">
+          <FadeIn delay={0.45} y={20}>
+            <p
+              className="max-w-[180px] font-light uppercase leading-snug tracking-wide text-doux sm:max-w-[240px] md:max-w-[300px]"
+              style={{ fontSize: "clamp(0.7rem, 1.3vw, 1.25rem)" }}
+            >
+              designer · développeur · créatif — freelance, en parallèle du BUT
+              MMI, dispo pour de nouveaux projets
+            </p>
+          </FadeIn>
+          <FadeIn delay={0.6} y={20}>
+            <Magnet padding={80} strength={4}>
+              <a href="#contact" className="btn-accent">
+                Me contacter
+              </a>
+            </Magnet>
+          </FadeIn>
         </div>
       </section>
 
-      {/* Projets */}
-      <section id="projets" className="section section-y">
-        <p className="surtitre">Projets</p>
-        <h2 className="mt-3 text-4xl font-bold tracking-tight md:text-5xl">
-          Ce que j&apos;ai construit
-        </h2>
-        <p className="mt-4 max-w-xl text-doux">
-          Du développement web au design et à l&apos;audiovisuel — une sélection
-          de projets menés de A à Z.
-        </p>
+      {/* ── Marquee projets ──────────────────────────────── */}
+      <MarqueeSection />
 
-        <div className="mt-16 space-y-20">
-          {poles.map((pole) => {
-            const items = projetsParPole(pole.id);
-            if (items.length === 0) return null;
-            return (
-              <div key={pole.id}>
-                <div className="flex flex-col gap-1 border-l-2 border-accent pl-4">
-                  <h3 className="text-2xl font-semibold tracking-tight">
-                    {pole.titre}
-                  </h3>
-                  <p className="text-sm text-doux">{pole.sousTitre}</p>
-                </div>
-
-                <div className="mt-8 grid gap-6 md:grid-cols-2">
-                  {items.map((p) => (
-                    <Link
-                      key={p.slug}
-                      href={`/projets/${p.slug}`}
-                      className="carte group flex flex-col"
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs uppercase tracking-widest text-accent">
-                          {p.type}
-                        </span>
-                        {p.lien && (
-                          <span className="text-xs text-doux">En ligne</span>
-                        )}
-                      </div>
-                      <h4 className="mt-3 text-2xl font-semibold">{p.titre}</h4>
-                      <p className="mt-2 flex-1 text-sm leading-relaxed text-doux">
-                        {p.resume}
-                      </p>
-                      <div className="mt-4 flex flex-wrap gap-2">
-                        {p.tags.map((t) => (
-                          <span key={t} className="puce-tech text-xs">
-                            {t}
-                          </span>
-                        ))}
-                      </div>
-                      <span className="mt-5 inline-flex items-center gap-2 text-sm font-medium text-accent">
-                        Voir le projet
-                        <svg
-                          className="h-4 w-4 transition-transform group-hover:translate-x-1"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth={1.8}
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        >
-                          <path d="M5 12h14M13 6l6 6-6 6" />
-                        </svg>
-                      </span>
-                    </Link>
-                  ))}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </section>
-
-      {/* Compétences */}
+      {/* ── À propos ─────────────────────────────────────── */}
       <section
-        id="competences"
-        className="border-y border-white/5 bg-surface/40"
+        id="apropos"
+        className="relative flex min-h-screen flex-col items-center justify-center px-5 py-20 sm:px-8 md:px-10"
       >
-        <div className="section section-y">
-          <p className="surtitre">Compétences</p>
-          <h2 className="mt-3 text-4xl font-bold tracking-tight md:text-5xl">
-            Mes outils
-          </h2>
-          <p className="mt-4 max-w-xl text-doux">
-            Un profil complet : je code, je designe, je réalise. De quoi mener un
-            projet du début à la fin.
-          </p>
-          <div className="mt-10 grid gap-10 md:grid-cols-3">
-            {competences.map((groupe) => (
-              <div key={groupe.categorie}>
-                <h3 className="text-sm font-semibold uppercase tracking-widest text-clair">
-                  {groupe.categorie}
-                </h3>
-                <div className="mt-4 flex flex-wrap gap-2">
-                  {groupe.items.map((c) => (
-                    <span key={c} className="puce-tech text-sm">
-                      {c}
-                    </span>
-                  ))}
-                </div>
+        {/* Pilules décoratives en coins */}
+        {pilulesApropos.map((p) => (
+          <FadeIn
+            key={p.texte}
+            delay={p.delay}
+            x={p.x}
+            y={0}
+            duration={0.9}
+            className={`absolute hidden sm:block ${p.classes}`}
+          >
+            <span className="inline-block rounded-full border border-white/15 bg-surface px-5 py-2.5 text-xs uppercase tracking-widest text-doux md:text-sm">
+              {p.texte}
+            </span>
+          </FadeIn>
+        ))}
+
+        <div className="flex flex-col items-center gap-10 sm:gap-14 md:gap-16">
+          <FadeIn delay={0} y={40}>
+            <h2
+              className="hero-heading text-center font-black uppercase leading-none tracking-tight"
+              style={{ fontSize: "clamp(3rem, 12vw, 160px)" }}
+            >
+              À propos
+            </h2>
+          </FadeIn>
+          <AnimatedText
+            text={APROPOS_TEXT}
+            className="max-w-[560px] text-center font-medium leading-relaxed text-clair"
+            style={{ fontSize: "clamp(1rem, 2vw, 1.35rem)" }}
+          />
+        </div>
+
+        {/* Parcours compact */}
+        <FadeIn delay={0.1} y={30} className="mt-16 w-full max-w-4xl sm:mt-20">
+          <div className="grid gap-3 sm:grid-cols-3">
+            {experiences.map((exp) => (
+              <div
+                key={exp.structure}
+                className="rounded-2xl border border-white/10 bg-surface/60 px-5 py-4"
+              >
+                <p className="text-xs uppercase tracking-widest text-accent">
+                  {exp.type}
+                </p>
+                <p className="mt-1 font-medium text-clair">{exp.structure}</p>
+                <p className="mt-0.5 text-sm font-light text-doux">{exp.poste}</p>
               </div>
             ))}
           </div>
+        </FadeIn>
+
+        <div className="mt-14 sm:mt-16">
+          <FadeIn delay={0.15} y={20}>
+            <a href="#contact" className="btn-accent">
+              Me contacter
+            </a>
+          </FadeIn>
         </div>
       </section>
 
-      {/* Parcours / Expériences */}
-      <section id="parcours" className="section section-y">
-        <p className="surtitre">Parcours</p>
-        <h2 className="mt-3 text-4xl font-bold tracking-tight md:text-5xl">
-          Où j&apos;ai travaillé
-        </h2>
-        <div className="mt-12 space-y-4">
-          {experiences.map((exp) => (
-            <div
-              key={exp.structure}
-              className="carte flex flex-col gap-2 md:flex-row md:items-start md:justify-between md:gap-8"
-            >
-              <div className="md:w-1/3">
-                <p className="text-lg font-semibold">{exp.structure}</p>
-                <span className="text-xs uppercase tracking-widest text-accent">
-                  {exp.type}
+      {/* ── Services (fond clair) ────────────────────────── */}
+      <section
+        id="services"
+        className="rounded-t-[40px] bg-white px-5 py-20 sm:rounded-t-[50px] sm:px-8 sm:py-24 md:rounded-t-[60px] md:px-10 md:py-32"
+      >
+        <FadeIn y={40}>
+          <h2
+            className="mb-16 text-center font-black uppercase leading-none tracking-tight text-nuit sm:mb-20 md:mb-28"
+            style={{ fontSize: "clamp(3rem, 12vw, 160px)" }}
+          >
+            Services
+          </h2>
+        </FadeIn>
+
+        <div className="mx-auto max-w-5xl">
+          {services.map((service, i) => (
+            <FadeIn key={service.num} delay={i * 0.1}>
+              <div
+                className={`flex items-start gap-6 py-8 sm:gap-10 sm:py-10 md:gap-16 md:py-12 ${
+                  i < services.length - 1 ? "border-b" : ""
+                }`}
+                style={{ borderColor: "rgba(12, 12, 12, 0.15)" }}
+              >
+                <span
+                  className="flex-shrink-0 font-black leading-none text-nuit"
+                  style={{ fontSize: "clamp(3rem, 10vw, 140px)" }}
+                >
+                  {service.num}
                 </span>
+                <div className="flex flex-col gap-2 pt-2 sm:gap-3 sm:pt-3">
+                  <h3
+                    className="font-medium uppercase text-nuit"
+                    style={{ fontSize: "clamp(1rem, 2.2vw, 2.1rem)" }}
+                  >
+                    {service.nom}
+                  </h3>
+                  <p
+                    className="max-w-2xl font-light leading-relaxed text-nuit opacity-60"
+                    style={{ fontSize: "clamp(0.85rem, 1.6vw, 1.25rem)" }}
+                  >
+                    {service.desc}
+                  </p>
+                </div>
               </div>
-              <div className="md:flex-1">
-                <p className="font-medium text-clair">{exp.poste}</p>
-                <p className="mt-1 text-sm leading-relaxed text-doux">
-                  {exp.texte}
-                </p>
-              </div>
-            </div>
+            </FadeIn>
           ))}
         </div>
       </section>
 
-      {/* À propos */}
+      {/* ── Projets (cartes empilées) ────────────────────── */}
       <section
-        id="apropos"
-        className="border-y border-white/5 bg-surface/40"
+        id="projets"
+        className="relative z-10 -mt-10 rounded-t-[40px] bg-nuit px-5 py-20 sm:-mt-12 sm:rounded-t-[50px] sm:px-8 sm:py-24 md:-mt-14 md:rounded-t-[60px] md:px-10 md:py-32"
       >
-        <div className="section section-y">
-          <div className="grid gap-12 md:grid-cols-[1fr_1.2fr] md:gap-16">
-            <div>
-              <p className="surtitre">À propos</p>
-              <h2 className="mt-3 text-4xl font-bold tracking-tight md:text-5xl">
-                Bonjour, moi c&apos;est Silas
-              </h2>
-            </div>
-            <div className="space-y-4 text-doux">
-              <p>
-                J&apos;ai 20 ans et je suis développeur web full-stack en
-                freelance, en parallèle de mon BUT MMI (3ᵉ année). Je crée des
-                sites web de A à Z : je pars de ton idée, je dessine
-                l&apos;interface, je développe, puis je mets en ligne.
-              </p>
-              <p>
-                Ma formation en MMI me donne une double casquette :{" "}
-                <span className="text-clair">développement</span> et{" "}
-                <span className="text-clair">
-                  design, branding et audiovisuel
-                </span>
-                . Tu obtiens un interlocuteur unique, du concept au site en
-                ligne.
-              </p>
-              <p>
-                Mon dernier projet, <span className="text-clair">Van Alaska</span>
-                , est un site de réservation complet : calendrier, paiement en
-                ligne, espace client et back-office pour tout gérer sans toucher
-                au code.
-              </p>
-              <p>Une idée en tête ? Écris-moi, on en parle.</p>
-            </div>
-          </div>
-        </div>
+        <FadeIn y={40}>
+          <h2
+            className="hero-heading mb-6 text-center font-black uppercase leading-none tracking-tight"
+            style={{ fontSize: "clamp(3rem, 12vw, 160px)" }}
+          >
+            Projets
+          </h2>
+        </FadeIn>
+        <FadeIn delay={0.1} y={20}>
+          <p className="mx-auto mb-16 max-w-md text-center font-light text-doux sm:mb-20 md:mb-24">
+            Trois pôles, dix-huit projets. Chaque projet a sa page dédiée —
+            clique pour voir les détails.
+          </p>
+        </FadeIn>
+
+        <ProjectsStack />
       </section>
 
-      {/* Contact */}
-      <section id="contact">
-        <div className="section section-y text-center">
+      {/* ── Contact ──────────────────────────────────────── */}
+      <section id="contact" className="section section-y text-center">
+        <FadeIn y={30}>
           <p className="surtitre">Contact</p>
-          <h2 className="mt-3 text-4xl font-bold tracking-tight md:text-5xl">
+          <h2
+            className="hero-heading mx-auto mt-4 font-black uppercase leading-none tracking-tight"
+            style={{ fontSize: "clamp(2.2rem, 8vw, 96px)" }}
+          >
             On construit ton site ?
           </h2>
-          <p className="mx-auto mt-4 max-w-lg text-doux">
+          <p className="mx-auto mt-6 max-w-lg font-light text-doux">
             Dis-moi ce que tu as en tête. Je te réponds vite, avec un premier
             avis honnête et un devis clair.
           </p>
-          <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
+          <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
             <a href={`mailto:${site.email}`} className="btn-accent">
               {site.email}
             </a>
@@ -281,10 +301,10 @@ export default function Home() {
               LinkedIn
             </a>
           </div>
-        </div>
+        </FadeIn>
       </section>
 
-      {/* Footer */}
+      {/* ── Footer ───────────────────────────────────────── */}
       <footer className="border-t border-white/5">
         <div className="section flex flex-col items-center justify-between gap-3 py-8 text-sm text-doux sm:flex-row">
           <p>
@@ -301,6 +321,6 @@ export default function Home() {
           </div>
         </div>
       </footer>
-    </>
+    </main>
   );
 }

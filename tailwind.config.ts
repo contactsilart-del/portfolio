@@ -8,15 +8,15 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // Thème sombre "SILART"
-        nuit: "#0a0a0b", // fond
+        // Thème sombre "SILART" — palette portée du design Jack 3D Creator
+        nuit: "#0C0C0C", // fond
         surface: "#141417", // cartes
-        clair: "#e7e7ea", // texte principal
-        doux: "#a1a1aa", // texte secondaire
-        accent: "#7c74ff", // violet électrique
+        clair: "#D7E2EA", // texte principal (bleu acier clair)
+        doux: "#96A0A8", // texte secondaire
+        accent: "#BBCCD7", // accents (haut du dégradé titres)
       },
       fontFamily: {
-        sans: ["var(--font-inter)", "system-ui", "sans-serif"],
+        sans: ["var(--font-kanit)", "system-ui", "sans-serif"],
       },
       keyframes: {
         "fade-up": {
