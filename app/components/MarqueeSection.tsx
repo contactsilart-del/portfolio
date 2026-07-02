@@ -3,11 +3,39 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { projets, type Projet } from "@/app/data/projets";
+import { imageSlot } from "@/app/data/images";
 
 const row1 = projets.filter((p) => p.pole === "dev");
 const row2 = projets.filter((p) => p.pole !== "dev");
 
 function Tuile({ projet }: { projet: Projet }) {
+  const cover = imageSlot(`projet.${projet.slug}.cover`);
+
+  if (cover) {
+    return (
+      <Link
+        href={`/projets/${projet.slug}`}
+        className="group relative h-[270px] w-[320px] flex-shrink-0 overflow-hidden rounded-2xl border border-white/10 sm:w-[420px]"
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={cover}
+          alt={projet.titre}
+          className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-transparent" />
+        <div className="absolute inset-x-0 bottom-0 p-5">
+          <span className="text-xs uppercase tracking-widest text-accent">
+            {projet.type}
+          </span>
+          <h3 className="mt-1 text-2xl font-semibold text-clair">
+            {projet.titre}
+          </h3>
+        </div>
+      </Link>
+    );
+  }
+
   return (
     <Link
       href={`/projets/${projet.slug}`}

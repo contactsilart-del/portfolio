@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { experiences } from "@/app/data/projets";
 import { site } from "@/app/data/site";
+import { imageSlot } from "@/app/data/images";
 import FadeIn from "@/app/components/FadeIn";
 import Magnet from "@/app/components/Magnet";
 import AnimatedText from "@/app/components/AnimatedText";
@@ -76,6 +77,8 @@ const pilulesApropos = [
 ];
 
 export default function Home() {
+  const portrait = imageSlot("hero.portrait");
+
   return (
     <main style={{ overflowX: "clip" }}>
       {/* ── Hero ─────────────────────────────────────────── */}
@@ -113,6 +116,18 @@ export default function Home() {
             </p>
           </FadeIn>
         </div>
+
+        {/* Portrait — effet magnétique (défini via /admin) */}
+        {portrait && (
+          <div className="pointer-events-none absolute bottom-0 left-1/2 z-10 w-[240px] -translate-x-1/2 sm:w-[320px] md:w-[400px] lg:w-[460px]">
+            <FadeIn delay={0.6} y={30}>
+              <Magnet padding={150} strength={3}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={portrait} alt={`Portrait de ${site.nom}`} className="w-full" />
+              </Magnet>
+            </FadeIn>
+          </div>
+        )}
 
         {/* Barre du bas */}
         <div className="z-20 flex items-end justify-between gap-6 px-6 pb-7 sm:pb-8 md:px-10 md:pb-10">

@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { getProjet, projets, poles } from "@/app/data/projets";
 import { site } from "@/app/data/site";
+import { imageSlot, galerieProjet } from "@/app/data/images";
 
 export function generateStaticParams() {
   return projets.map((p) => ({ slug: p.slug }));
@@ -29,6 +30,8 @@ export default function ProjetPage({ params }: { params: { slug: string } }) {
   const autres = projets
     .filter((p) => p.pole === projet.pole && p.slug !== projet.slug)
     .slice(0, 3);
+  const cover = imageSlot(`projet.${projet.slug}.cover`);
+  const galerie = galerieProjet(projet.slug);
 
   return (
     <>
@@ -62,6 +65,15 @@ export default function ProjetPage({ params }: { params: { slug: string } }) {
           ))}
         </div>
 
+        {cover && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={cover}
+            alt={projet.titre}
+            className="mt-10 max-h-[520px] w-full rounded-3xl border border-white/10 object-cover"
+          />
+        )}
+
         {(projet.role || projet.annee) && (
           <div className="mt-8 flex flex-wrap gap-x-10 gap-y-3 text-sm text-doux">
             {projet.role && (
@@ -82,6 +94,20 @@ export default function ProjetPage({ params }: { params: { slug: string } }) {
             <p key={i}>{p}</p>
           ))}
         </div>
+
+        {galerie.length > 0 && (
+          <div className="mt-12 grid gap-4 sm:grid-cols-2">
+            {galerie.map((src) => (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                key={src}
+                src={src}
+                alt={projet.titre}
+                className="w-full rounded-3xl border border-white/10 object-cover"
+              />
+            ))}
+          </div>
+        )}
 
         {projet.lien && (
           <a
