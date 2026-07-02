@@ -1,6 +1,7 @@
 export const site = {
   nom: "Silas Clamens Albert",
   marque: "SILART",
+  url: "https://bysilart.fr",
   email: "contact.silart@gmail.com",
   linkedin: "https://www.linkedin.com/in/silas-clamens-albert-3b46b0327/",
   titrePrincipal: "Développeur web full-stack",
