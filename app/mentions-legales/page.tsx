@@ -140,6 +140,16 @@ export default function MentionsLegales() {
             </a>
             .
           </p>
+          <p>
+            Pour plus de détails, consultez la{" "}
+            <Link
+              href="/politique-de-confidentialite"
+              className="text-accent hover:underline"
+            >
+              politique de confidentialité
+            </Link>
+            .
+          </p>
         </Bloc>
 
         <Bloc titre="Cookies">

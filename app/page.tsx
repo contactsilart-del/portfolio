@@ -317,6 +317,12 @@ export default function Home() {
             >
               Mentions légales
             </Link>
+            <Link
+              href="/politique-de-confidentialite"
+              className="transition-colors hover:text-clair"
+            >
+              Confidentialité
+            </Link>
             <span>Conçu et développé avec Next.js</span>
           </div>
         </div>
