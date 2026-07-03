@@ -36,16 +36,23 @@ npm run start    # sur http://localhost:3001
 
 ## Panel admin (images)
 
-En développement uniquement : lancer `npm run dev` puis ouvrir
-[http://localhost:3001/admin](http://localhost:3001/admin).
+Accessible en ligne : **https://bysilart.fr/admin** (protégé par mot de passe).
 
 - Images triées par page/catégorie (Accueil, Dev, Branding, Audiovisuel)
 - Ajout / remplacement / suppression : portrait du hero, image principale
   de chaque projet (cartes + page dédiée) et galeries des pages dédiées
-- Bouton **« Publier en ligne »** : commit + push automatique → Vercel déploie
+- Publication **instantanée** : les fichiers sont stockés sur Vercel Blob et
+  le site est revalidé à chaque modification (aucun redéploiement nécessaire)
 
-Le panel n'existe pas en production (404) : les fichiers sont écrits en local
-dans `public/images/` et versionnés dans Git.
+Prérequis (une seule fois, sur le dashboard Vercel) :
+
+1. **Storage → Create → Blob**, connecter le store au projet
+   (la variable `BLOB_READ_WRITE_TOKEN` est ajoutée automatiquement)
+2. **Settings → Environment Variables** : ajouter `ADMIN_PASSWORD`
+3. Redéployer
+
+En local sans token Blob, le site utilise le fallback `app/data/images.json`
+(vide) ; pour voir les images de production en dev : `vercel env pull .env.local`.
 
 ## Déploiement
 

@@ -1,21 +1,22 @@
-import manifest from "./images.json";
-
 /**
- * Manifeste des images du site, géré via le panel /admin (en dev uniquement).
+ * Manifeste des images du site, géré via le panel /admin.
  * - slots : emplacements uniques ("hero.portrait", "projet.<slug>.cover")
  * - galeries : listes d'images par projet (pages dédiées)
+ *
+ * Ce module est volontairement « client-safe » (types + helpers purs).
+ * La lecture du manifeste (Vercel Blob) est dans images-server.ts.
  */
 export type ImagesManifest = {
   slots: Record<string, string>;
   galeries: Record<string, string[]>;
 };
 
-const data = manifest as ImagesManifest;
+export const manifestVide: ImagesManifest = { slots: {}, galeries: {} };
 
-export function imageSlot(id: string): string | null {
-  return data.slots[id] ?? null;
+export function slotImage(manifest: ImagesManifest, id: string): string | null {
+  return manifest.slots[id] ?? null;
 }
 
-export function galerieProjet(slug: string): string[] {
-  return data.galeries[slug] ?? [];
+export function galerieImages(manifest: ImagesManifest, slug: string): string[] {
+  return manifest.galeries[slug] ?? [];
 }

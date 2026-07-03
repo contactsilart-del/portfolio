@@ -1,20 +1,35 @@
 import { NextResponse } from "next/server";
-import fs from "fs";
 import path from "path";
+import { del, put } from "@vercel/blob";
+import { revalidatePath, revalidateTag } from "next/cache";
 import {
-  adminForbidden,
-  readManifest,
-  writeManifest,
-  deleteLocalImage,
-  IMAGES_DIR,
+  blobConfigured,
+  checkAuth,
+  ecrireManifest,
+  estUrlBlob,
+  lireManifest,
 } from "../admin-utils";
 
 const EXTENSIONS = new Set([".jpg", ".jpeg", ".png", ".webp", ".gif", ".avif", ".svg"]);
 const MAX_SIZE = 15 * 1024 * 1024; // 15 Mo
 
+function revaliderSite() {
+  revalidateTag("images-manifest");
+  revalidatePath("/");
+  revalidatePath("/projets/[slug]", "page");
+}
+
 export async function POST(req: Request) {
-  if (adminForbidden()) {
-    return NextResponse.json({ error: "Panel admin désactivé en production." }, { status: 404 });
+  const err = checkAuth(req);
+  if (err) return NextResponse.json({ error: err.error }, { status: err.status });
+  if (!blobConfigured()) {
+    return NextResponse.json(
+      {
+        error:
+          "Stockage Vercel Blob non configuré. Sur Vercel : Storage → Create → Blob, connecte le store au projet, puis redéploie.",
+      },
+      { status: 503 }
+    );
   }
 
   const form = await req.formData();
@@ -44,22 +59,31 @@ export async function POST(req: Request) {
     .toLowerCase()
     .replace(/[^a-z0-9-]+/g, "-")
     .replace(/^-+|-+$/g, "");
-  const name = `${base}-${Date.now()}${ext}`;
+  const nom = `images/${base}-${Date.now()}${ext}`;
 
-  fs.mkdirSync(IMAGES_DIR, { recursive: true });
-  fs.writeFileSync(path.join(IMAGES_DIR, name), Buffer.from(await file.arrayBuffer()));
+  const blob = await put(nom, file, {
+    access: "public",
+    addRandomSuffix: false,
+    contentType: file.type || undefined,
+    cacheControlMaxAge: 31536000, // les fichiers sont uniques : cache long
+  });
 
-  const src = `/images/${name}`;
-  const manifest = readManifest();
-
+  const manifest = await lireManifest();
   if (typeof slot === "string") {
     const ancienne = manifest.slots[slot];
-    if (ancienne) deleteLocalImage(ancienne);
-    manifest.slots[slot] = src;
+    if (ancienne && estUrlBlob(ancienne)) {
+      try {
+        await del(ancienne);
+      } catch {
+        // l'ancien fichier restera orphelin, sans impact sur le site
+      }
+    }
+    manifest.slots[slot] = blob.url;
   } else if (typeof galerie === "string") {
-    manifest.galeries[galerie] = [...(manifest.galeries[galerie] ?? []), src];
+    manifest.galeries[galerie] = [...(manifest.galeries[galerie] ?? []), blob.url];
   }
+  await ecrireManifest(manifest);
 
-  writeManifest(manifest);
-  return NextResponse.json({ ok: true, src });
+  revaliderSite();
+  return NextResponse.json({ ok: true, src: blob.url });
 }

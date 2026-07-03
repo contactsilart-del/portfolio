@@ -3,8 +3,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { poles, projetsParPole, type Pole, type Projet } from "@/app/data/projets";
+import type { ImagesManifest } from "@/app/data/images";
 
-type Manifest = { slots: Record<string, string>; galeries: Record<string, string[]> };
+const PWD_KEY = "silart-admin-pwd";
+
+type Configured = { password: boolean; blob: boolean };
+type Statut = "chargement" | "login" | "config" | "ok";
 
 const ONGLETS: { id: "accueil" | Pole; label: string }[] = [
   { id: "accueil", label: "Accueil" },
@@ -65,64 +69,107 @@ function Apercu({ src, large }: { src: string | null; large?: boolean }) {
 }
 
 export default function AdminClient() {
-  const [manifest, setManifest] = useState<Manifest>({ slots: {}, galeries: {} });
-  const [pending, setPending] = useState<string[]>([]);
+  const [statut, setStatut] = useState<Statut>("chargement");
+  const [pwd, setPwd] = useState("");
+  const [saisie, setSaisie] = useState("");
+  const [erreurLogin, setErreurLogin] = useState<string | null>(null);
+  const [configured, setConfigured] = useState<Configured>({ password: false, blob: false });
+  const [manifest, setManifest] = useState<ImagesManifest>({ slots: {}, galeries: {} });
   const [onglet, setOnglet] = useState<"accueil" | Pole>("accueil");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
-  const refresh = useCallback(async () => {
-    const res = await fetch("/api/admin/state", { cache: "no-store" });
-    if (res.ok) {
-      const data = await res.json();
-      setManifest(data.manifest);
-      setPending(data.pending ?? []);
+  const refresh = useCallback(async (motDePasse: string) => {
+    const res = await fetch("/api/admin/state", {
+      cache: "no-store",
+      headers: motDePasse ? { "x-admin-password": motDePasse } : {},
+    });
+    const data = await res.json().catch(() => null);
+
+    if (res.status === 503) {
+      setConfigured(data?.configured ?? { password: false, blob: false });
+      setStatut("config");
+      return false;
     }
+    if (res.status === 401) {
+      setStatut("login");
+      return false;
+    }
+    if (res.ok && data) {
+      setManifest(data.manifest);
+      setConfigured(data.configured);
+      setPwd(motDePasse);
+      try {
+        localStorage.setItem(PWD_KEY, motDePasse);
+      } catch {}
+      setStatut("ok");
+      return true;
+    }
+    setStatut("login");
+    return false;
   }, []);
 
   useEffect(() => {
-    refresh();
+    let stocke = "";
+    try {
+      stocke = localStorage.getItem(PWD_KEY) ?? "";
+    } catch {}
+    refresh(stocke);
   }, [refresh]);
+
+  async function connecter(e: React.FormEvent) {
+    e.preventDefault();
+    setErreurLogin(null);
+    const ok = await refresh(saisie);
+    if (!ok) setErreurLogin("Mot de passe incorrect.");
+  }
+
+  function deconnecter() {
+    try {
+      localStorage.removeItem(PWD_KEY);
+    } catch {}
+    setPwd("");
+    setSaisie("");
+    setStatut("login");
+  }
 
   async function upload(cible: { slot?: string; galerie?: string }, files: FileList | null) {
     if (!files || files.length === 0) return;
     setBusy(true);
     setMessage(null);
+    let erreur: string | null = null;
     for (const file of Array.from(files)) {
       const form = new FormData();
       form.append("file", file);
       if (cible.slot) form.append("slot", cible.slot);
       if (cible.galerie) form.append("galerie", cible.galerie);
-      const res = await fetch("/api/admin/upload", { method: "POST", body: form });
+      const res = await fetch("/api/admin/upload", {
+        method: "POST",
+        headers: { "x-admin-password": pwd },
+        body: form,
+      });
       if (!res.ok) {
         const err = await res.json().catch(() => null);
-        setMessage(err?.error ?? "Erreur pendant l'upload.");
+        erreur = err?.error ?? "Erreur pendant l'upload.";
         break;
       }
     }
-    await refresh();
+    await refresh(pwd);
+    setMessage(erreur ?? "En ligne ✓ — le site public est à jour.");
     setBusy(false);
   }
 
   async function supprimer(payload: { slot?: string; galerie?: string; src?: string }) {
     setBusy(true);
     setMessage(null);
-    await fetch("/api/admin/delete", {
+    const res = await fetch("/api/admin/delete", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", "x-admin-password": pwd },
       body: JSON.stringify(payload),
     });
-    await refresh();
-    setBusy(false);
-  }
-
-  async function publier() {
-    setBusy(true);
-    setMessage("Publication en cours…");
-    const res = await fetch("/api/admin/publish", { method: "POST" });
-    const data = await res.json().catch(() => null);
-    setMessage(data?.message ?? data?.error ?? "Erreur pendant la publication.");
-    await refresh();
+    const err = res.ok ? null : (await res.json().catch(() => null))?.error;
+    await refresh(pwd);
+    setMessage(err ?? "Supprimé ✓ — le site public est à jour.");
     setBusy(false);
   }
 
@@ -138,10 +185,7 @@ export default function AdminClient() {
             <h3 className="text-lg font-semibold text-clair">{projet.titre}</h3>
             <p className="text-xs uppercase tracking-wider text-doux">{projet.type}</p>
           </div>
-          <Link
-            href={`/projets/${projet.slug}`}
-            className="text-xs text-accent hover:underline"
-          >
+          <Link href={`/projets/${projet.slug}`} className="text-xs text-accent hover:underline">
             Voir la page →
           </Link>
         </div>
@@ -176,8 +220,7 @@ export default function AdminClient() {
         <div className="mt-5 border-t border-white/5 pt-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <p className="text-xs text-doux">
-              Galerie de la page dédiée ({galerie.length} image
-              {galerie.length > 1 ? "s" : ""})
+              Galerie de la page dédiée ({galerie.length} image{galerie.length > 1 ? "s" : ""})
             </p>
             <BoutonFichier
               label="Ajouter des images"
@@ -213,10 +256,80 @@ export default function AdminClient() {
     );
   }
 
+  /* ── Écrans d'état ─────────────────────────────────────── */
+
+  if (statut === "chargement") {
+    return (
+      <main className="flex min-h-screen items-center justify-center">
+        <p className="text-doux">Chargement…</p>
+      </main>
+    );
+  }
+
+  if (statut === "config") {
+    return (
+      <main className="flex min-h-screen items-center justify-center px-6">
+        <div className="carte max-w-lg">
+          <h1 className="text-xl font-semibold text-clair">Configuration requise</h1>
+          <div className="mt-4 space-y-3 text-sm leading-relaxed text-doux">
+            {!configured.password && (
+              <p>
+                <span className="text-clair">1. Mot de passe :</span> sur Vercel →
+                ton projet → Settings → Environment Variables → ajoute{" "}
+                <code className="rounded bg-white/10 px-1.5 py-0.5">ADMIN_PASSWORD</code>{" "}
+                avec le mot de passe de ton choix.
+              </p>
+            )}
+            {!configured.blob && (
+              <p>
+                <span className="text-clair">2. Stockage :</span> sur Vercel → onglet{" "}
+                <span className="text-clair">Storage</span> → Create →{" "}
+                <span className="text-clair">Blob</span> → connecte le store au projet
+                (la variable <code className="rounded bg-white/10 px-1.5 py-0.5">BLOB_READ_WRITE_TOKEN</code>{" "}
+                est ajoutée automatiquement).
+              </p>
+            )}
+            <p>
+              Puis <span className="text-clair">redéploie</span> (Deployments → ⋯ →
+              Redeploy) et recharge cette page.
+            </p>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  if (statut === "login") {
+    return (
+      <main className="flex min-h-screen items-center justify-center px-6">
+        <form onSubmit={connecter} className="carte w-full max-w-sm">
+          <h1 className="text-xl font-semibold text-clair">
+            SIL<span className="text-accent">ART</span> · Panel admin
+          </h1>
+          <p className="mt-1 text-xs text-doux">Entre le mot de passe administrateur.</p>
+          <input
+            type="password"
+            value={saisie}
+            onChange={(e) => setSaisie(e.target.value)}
+            placeholder="Mot de passe"
+            autoFocus
+            className="mt-4 w-full rounded-lg border border-white/15 bg-nuit px-4 py-2.5 text-sm text-clair outline-none focus:border-clair/60"
+          />
+          {erreurLogin && <p className="mt-2 text-xs text-red-400">{erreurLogin}</p>}
+          <button type="submit" className="btn-accent mt-4 w-full px-6 py-2.5 text-xs">
+            Se connecter
+          </button>
+        </form>
+      </main>
+    );
+  }
+
+  /* ── Panel ─────────────────────────────────────────────── */
+
   const portrait = manifest.slots["hero.portrait"] ?? null;
 
   return (
-    <main className="min-h-screen pb-32">
+    <main className="min-h-screen pb-28">
       {/* En-tête */}
       <header className="border-b border-white/5">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
@@ -224,18 +337,33 @@ export default function AdminClient() {
             SIL<span className="text-accent">ART</span>{" "}
             <span className="text-sm font-normal text-doux">· Panel admin — Images</span>
           </p>
-          <Link href="/" className="text-sm text-doux transition-colors hover:text-clair">
-            ← Voir le site
-          </Link>
+          <div className="flex items-center gap-5">
+            <Link href="/" className="text-sm text-doux transition-colors hover:text-clair">
+              ← Voir le site
+            </Link>
+            <button
+              type="button"
+              onClick={deconnecter}
+              className="text-xs text-doux transition-colors hover:text-clair"
+            >
+              Déconnexion
+            </button>
+          </div>
         </div>
       </header>
 
       <div className="mx-auto max-w-6xl px-6 pt-8">
         <p className="text-sm text-doux">
-          Panel local (dev uniquement). Ajoute ou remplace les images, puis clique{" "}
-          <span className="text-clair">« Publier en ligne »</span> pour mettre bysilart.fr à
-          jour.
+          Les changements sont <span className="text-clair">publiés instantanément</span> sur
+          le site : pas de bouton à cliquer, tout est en ligne dès l&apos;upload.
         </p>
+
+        {!configured.blob && (
+          <p className="mt-3 rounded-lg border border-yellow-500/30 bg-yellow-500/10 px-4 py-2 text-xs text-yellow-200">
+            Stockage Blob non configuré : les uploads échoueront. Vercel → Storage →
+            Create → Blob, connecte le store au projet, puis redéploie.
+          </p>
+        )}
 
         {/* Onglets par page / catégorie */}
         <div className="mt-6 flex flex-wrap gap-2">
@@ -291,25 +419,20 @@ export default function AdminClient() {
         </div>
       </div>
 
-      {/* Barre de publication */}
+      {/* Barre d'état */}
       <div className="fixed inset-x-0 bottom-0 z-50 border-t border-white/10 bg-nuit/95 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-6 py-4">
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-6 py-3">
           <p className="text-sm text-doux">
-            {pending.length > 0
-              ? `${pending.length} modification${pending.length > 1 ? "s" : ""} locale${
-                  pending.length > 1 ? "s" : ""
-                } non publiée${pending.length > 1 ? "s" : ""}`
-              : "Tout est publié ✓"}
-            {message && <span className="ml-3 text-clair">{message}</span>}
+            {busy ? "Traitement…" : message ?? "Prêt."}
           </p>
-          <button
-            type="button"
-            onClick={publier}
-            disabled={busy || pending.length === 0}
-            className="btn-accent px-6 py-2 text-xs disabled:cursor-not-allowed disabled:opacity-40"
+          <a
+            href="/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs uppercase tracking-wider text-accent hover:underline"
           >
-            {busy ? "…" : "Publier en ligne"}
-          </button>
+            Ouvrir le site ↗
+          </a>
         </div>
       </div>
     </main>

@@ -3,14 +3,12 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { projets, type Projet } from "@/app/data/projets";
-import { imageSlot } from "@/app/data/images";
+import { slotImage, type ImagesManifest } from "@/app/data/images";
 
 const row1 = projets.filter((p) => p.pole === "dev");
 const row2 = projets.filter((p) => p.pole !== "dev");
 
-function Tuile({ projet }: { projet: Projet }) {
-  const cover = imageSlot(`projet.${projet.slug}.cover`);
-
+function Tuile({ projet, cover }: { projet: Projet; cover: string | null }) {
   if (cover) {
     return (
       <Link
@@ -64,20 +62,26 @@ function Tuile({ projet }: { projet: Projet }) {
 function MarqueeRow({
   items,
   transform,
+  manifest,
 }: {
   items: Projet[];
   transform: string;
+  manifest: ImagesManifest;
 }) {
   return (
     <div className="flex w-max gap-3" style={{ transform, willChange: "transform" }}>
       {[...items, ...items, ...items].map((projet, i) => (
-        <Tuile key={`${projet.slug}-${i}`} projet={projet} />
+        <Tuile
+          key={`${projet.slug}-${i}`}
+          projet={projet}
+          cover={slotImage(manifest, `projet.${projet.slug}.cover`)}
+        />
       ))}
     </div>
   );
 }
 
-export default function MarqueeSection() {
+export default function MarqueeSection({ manifest }: { manifest: ImagesManifest }) {
   const sectionRef = useRef<HTMLElement>(null);
   const [offset, setOffset] = useState(0);
 
@@ -96,8 +100,16 @@ export default function MarqueeSection() {
   return (
     <section ref={sectionRef} className="bg-nuit pb-10 pt-24 sm:pt-32 md:pt-40">
       <div className="flex flex-col gap-3">
-        <MarqueeRow items={row1} transform={`translateX(${offset - 200}px)`} />
-        <MarqueeRow items={row2} transform={`translateX(${-(offset - 200)}px)`} />
+        <MarqueeRow
+          items={row1}
+          transform={`translateX(${offset - 200}px)`}
+          manifest={manifest}
+        />
+        <MarqueeRow
+          items={row2}
+          transform={`translateX(${-(offset - 200)}px)`}
+          manifest={manifest}
+        />
       </div>
     </section>
   );

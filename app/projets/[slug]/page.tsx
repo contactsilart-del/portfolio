@@ -3,7 +3,8 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { getProjet, projets, poles } from "@/app/data/projets";
 import { site } from "@/app/data/site";
-import { imageSlot, galerieProjet } from "@/app/data/images";
+import { slotImage, galerieImages } from "@/app/data/images";
+import { getImagesManifest } from "@/app/data/images-server";
 
 export function generateStaticParams() {
   return projets.map((p) => ({ slug: p.slug }));
@@ -22,7 +23,7 @@ export function generateMetadata({
   };
 }
 
-export default function ProjetPage({ params }: { params: { slug: string } }) {
+export default async function ProjetPage({ params }: { params: { slug: string } }) {
   const projet = getProjet(params.slug);
   if (!projet) notFound();
 
@@ -30,8 +31,9 @@ export default function ProjetPage({ params }: { params: { slug: string } }) {
   const autres = projets
     .filter((p) => p.pole === projet.pole && p.slug !== projet.slug)
     .slice(0, 3);
-  const cover = imageSlot(`projet.${projet.slug}.cover`);
-  const galerie = galerieProjet(projet.slug);
+  const manifest = await getImagesManifest();
+  const cover = slotImage(manifest, `projet.${projet.slug}.cover`);
+  const galerie = galerieImages(manifest, projet.slug);
 
   return (
     <>

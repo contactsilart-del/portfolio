@@ -1,23 +1,18 @@
 import { NextResponse } from "next/server";
-import { execSync } from "child_process";
-import { adminForbidden, readManifest, ROOT } from "../admin-utils";
+import { checkAuth, configuration, lireManifest } from "../admin-utils";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
-  if (adminForbidden()) {
-    return NextResponse.json({ error: "Panel admin désactivé en production." }, { status: 404 });
+export async function GET(req: Request) {
+  const err = checkAuth(req);
+  if (err) {
+    return NextResponse.json(
+      { error: err.error, configured: configuration() },
+      { status: err.status }
+    );
   }
-
-  let pending: string[] = [];
-  try {
-    pending = execSync("git status --porcelain", { cwd: ROOT })
-      .toString()
-      .split("\n")
-      .filter(Boolean);
-  } catch {
-    // git indisponible : on affiche quand même le manifeste
-  }
-
-  return NextResponse.json({ manifest: readManifest(), pending });
+  return NextResponse.json({
+    manifest: await lireManifest(),
+    configured: configuration(),
+  });
 }

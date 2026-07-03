@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { experiences } from "@/app/data/projets";
 import { site } from "@/app/data/site";
-import { imageSlot } from "@/app/data/images";
+import { slotImage } from "@/app/data/images";
+import { getImagesManifest } from "@/app/data/images-server";
 import FadeIn from "@/app/components/FadeIn";
 import Magnet from "@/app/components/Magnet";
 import AnimatedText from "@/app/components/AnimatedText";
@@ -76,8 +77,9 @@ const pilulesApropos = [
   },
 ];
 
-export default function Home() {
-  const portrait = imageSlot("hero.portrait");
+export default async function Home() {
+  const manifest = await getImagesManifest();
+  const portrait = slotImage(manifest, "hero.portrait");
 
   return (
     <main style={{ overflowX: "clip" }}>
@@ -151,7 +153,7 @@ export default function Home() {
       </section>
 
       {/* ── Marquee projets ──────────────────────────────── */}
-      <MarqueeSection />
+      <MarqueeSection manifest={manifest} />
 
       {/* ── À propos ─────────────────────────────────────── */}
       <section
@@ -286,7 +288,7 @@ export default function Home() {
           </p>
         </FadeIn>
 
-        <ProjectsStack />
+        <ProjectsStack manifest={manifest} />
       </section>
 
       {/* ── Contact ──────────────────────────────────────── */}

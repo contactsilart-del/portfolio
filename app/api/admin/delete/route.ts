@@ -1,14 +1,22 @@
 import { NextResponse } from "next/server";
+import { del } from "@vercel/blob";
+import { revalidatePath, revalidateTag } from "next/cache";
 import {
-  adminForbidden,
-  readManifest,
-  writeManifest,
-  deleteLocalImage,
+  blobConfigured,
+  checkAuth,
+  ecrireManifest,
+  estUrlBlob,
+  lireManifest,
 } from "../admin-utils";
 
 export async function POST(req: Request) {
-  if (adminForbidden()) {
-    return NextResponse.json({ error: "Panel admin désactivé en production." }, { status: 404 });
+  const err = checkAuth(req);
+  if (err) return NextResponse.json({ error: err.error }, { status: err.status });
+  if (!blobConfigured()) {
+    return NextResponse.json(
+      { error: "Stockage Vercel Blob non configuré." },
+      { status: 503 }
+    );
   }
 
   const body = (await req.json().catch(() => null)) as {
@@ -21,21 +29,38 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Cible manquante." }, { status: 400 });
   }
 
-  const manifest = readManifest();
+  const manifest = await lireManifest();
 
   if (typeof body.slot === "string") {
     const src = manifest.slots[body.slot];
-    if (src) deleteLocalImage(src);
+    if (src && estUrlBlob(src)) {
+      try {
+        await del(src);
+      } catch {
+        // fichier déjà absent
+      }
+    }
     delete manifest.slots[body.slot];
   } else if (typeof body.galerie === "string" && typeof body.src === "string") {
     const liste = manifest.galeries[body.galerie] ?? [];
-    if (liste.includes(body.src)) deleteLocalImage(body.src);
+    if (liste.includes(body.src) && estUrlBlob(body.src)) {
+      try {
+        await del(body.src);
+      } catch {
+        // fichier déjà absent
+      }
+    }
     manifest.galeries[body.galerie] = liste.filter((s) => s !== body.src);
     if (manifest.galeries[body.galerie].length === 0) {
       delete manifest.galeries[body.galerie];
     }
   }
 
-  writeManifest(manifest);
+  await ecrireManifest(manifest);
+
+  revalidateTag("images-manifest");
+  revalidatePath("/");
+  revalidatePath("/projets/[slug]", "page");
+
   return NextResponse.json({ ok: true });
 }
