@@ -1,8 +1,9 @@
 import type { MetadataRoute } from "next";
-import { projets } from "@/app/data/projets";
+import { getProjets } from "@/app/data/projets-server";
 import { site } from "@/app/data/site";
 
-export default function sitemap(): MetadataRoute.Sitemap {
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  const projets = await getProjets();
   return [
     {
       url: site.url,

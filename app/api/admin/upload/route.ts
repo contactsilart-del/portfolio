@@ -1,23 +1,17 @@
 import { NextResponse } from "next/server";
 import path from "path";
 import { del, put } from "@vercel/blob";
-import { revalidatePath, revalidateTag } from "next/cache";
 import {
   blobConfigured,
   checkAuth,
   ecrireManifest,
   estUrlBlob,
   lireManifest,
+  revaliderSite,
 } from "../admin-utils";
 
 const EXTENSIONS = new Set([".jpg", ".jpeg", ".png", ".webp", ".gif", ".avif", ".svg"]);
 const MAX_SIZE = 15 * 1024 * 1024; // 15 Mo
-
-function revaliderSite() {
-  revalidateTag("images-manifest");
-  revalidatePath("/");
-  revalidatePath("/projets/[slug]", "page");
-}
 
 export async function POST(req: Request) {
   const err = checkAuth(req);

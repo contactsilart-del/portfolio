@@ -2,8 +2,9 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { poles, projetsParPole, type Pole, type Projet } from "@/app/data/projets";
+import { poles, projetsDefaut, type Pole, type Projet } from "@/app/data/projets";
 import type { ImagesManifest } from "@/app/data/images";
+import ProjetForm, { type ProjetPayload } from "./ProjetForm";
 
 const PWD_KEY = "silart-admin-pwd";
 
@@ -68,6 +69,146 @@ function Apercu({ src, large }: { src: string | null; large?: boolean }) {
   );
 }
 
+/* Carte d'un projet : textes (formulaire) + image principale + galerie.
+   Défini au niveau module (pas dans AdminClient) pour que le formulaire
+   garde sa saisie quand le parent se re-rend. */
+function EditeurProjet({
+  projet,
+  manifest,
+  busy,
+  ouvert,
+  onToggleEdition,
+  onUpload,
+  onDeleteImage,
+  onSave,
+  onDeleteProjet,
+}: {
+  projet: Projet;
+  manifest: ImagesManifest;
+  busy: boolean;
+  ouvert: boolean;
+  onToggleEdition: () => void;
+  onUpload: (cible: { slot?: string; galerie?: string }, files: FileList | null) => void;
+  onDeleteImage: (payload: { slot?: string; galerie?: string; src?: string }) => void;
+  onSave: (projet: ProjetPayload, slugOriginal: string) => void;
+  onDeleteProjet: (projet: Projet) => void;
+}) {
+  const slotCover = `projet.${projet.slug}.cover`;
+  const cover = manifest.slots[slotCover] ?? null;
+  const galerie = manifest.galeries[projet.slug] ?? [];
+
+  return (
+    <div className="carte">
+      <div className="flex flex-wrap items-baseline justify-between gap-3">
+        <div>
+          <h3 className="text-lg font-semibold text-clair">{projet.titre}</h3>
+          <p className="text-xs uppercase tracking-wider text-doux">
+            {projet.type || "—"}
+          </p>
+        </div>
+        <div className="flex items-center gap-4">
+          <button
+            type="button"
+            onClick={onToggleEdition}
+            className="text-xs uppercase tracking-wider text-accent hover:underline"
+          >
+            {ouvert ? "Fermer" : "Modifier le texte"}
+          </button>
+          <Link href={`/projets/${projet.slug}`} className="text-xs text-doux hover:text-clair">
+            Voir la page →
+          </Link>
+        </div>
+      </div>
+
+      {/* Formulaire d'édition des textes */}
+      {ouvert && (
+        <div className="mt-5 rounded-2xl border border-white/10 bg-nuit/60 p-5">
+          <ProjetForm
+            initial={projet}
+            poleParDefaut={projet.pole}
+            busy={busy}
+            onSubmit={(p) => onSave(p, projet.slug)}
+            onCancel={onToggleEdition}
+          />
+          <div className="mt-4 border-t border-white/5 pt-3 text-right">
+            <button
+              type="button"
+              onClick={() => onDeleteProjet(projet)}
+              disabled={busy}
+              className="text-xs text-red-400/80 transition-colors hover:text-red-400 disabled:opacity-50"
+            >
+              Supprimer ce projet définitivement
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Image principale */}
+      <div className="mt-4 flex items-center gap-4">
+        <Apercu src={cover} />
+        <div className="flex flex-col gap-2">
+          <p className="text-xs text-doux">
+            Image principale — cartes de l&apos;accueil + page dédiée
+          </p>
+          <div className="flex items-center gap-3">
+            <BoutonFichier
+              label={cover ? "Remplacer" : "Ajouter"}
+              disabled={busy}
+              onFiles={(f) => onUpload({ slot: slotCover }, f)}
+            />
+            {cover && (
+              <button
+                type="button"
+                onClick={() => onDeleteImage({ slot: slotCover })}
+                className="text-xs text-red-400/80 transition-colors hover:text-red-400"
+              >
+                Supprimer
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Galerie */}
+      <div className="mt-5 border-t border-white/5 pt-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="text-xs text-doux">
+            Galerie de la page dédiée ({galerie.length} image{galerie.length > 1 ? "s" : ""})
+          </p>
+          <BoutonFichier
+            label="Ajouter des images"
+            multiple
+            disabled={busy}
+            onFiles={(f) => onUpload({ galerie: projet.slug }, f)}
+          />
+        </div>
+        {galerie.length > 0 && (
+          <div className="mt-3 flex flex-wrap gap-3">
+            {galerie.map((src) => (
+              <div key={src} className="group relative">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={src}
+                  alt=""
+                  className="h-20 w-28 rounded-lg border border-white/10 object-cover"
+                />
+                <button
+                  type="button"
+                  onClick={() => onDeleteImage({ galerie: projet.slug, src })}
+                  className="absolute -right-2 -top-2 hidden h-6 w-6 items-center justify-center rounded-full bg-red-500 text-xs text-white group-hover:flex"
+                  aria-label="Supprimer cette image"
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function AdminClient() {
   const [statut, setStatut] = useState<Statut>("chargement");
   const [pwd, setPwd] = useState("");
@@ -75,9 +216,12 @@ export default function AdminClient() {
   const [erreurLogin, setErreurLogin] = useState<string | null>(null);
   const [configured, setConfigured] = useState<Configured>({ password: false, blob: false });
   const [manifest, setManifest] = useState<ImagesManifest>({ slots: {}, galeries: {} });
+  const [projets, setProjets] = useState<Projet[]>(projetsDefaut);
   const [onglet, setOnglet] = useState<"accueil" | Pole>("accueil");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [enEdition, setEnEdition] = useState<string | null>(null); // slug en cours d'édition
+  const [creation, setCreation] = useState(false); // formulaire « nouveau projet » ouvert
 
   const refresh = useCallback(async (motDePasse: string) => {
     const res = await fetch("/api/admin/state", {
@@ -97,6 +241,7 @@ export default function AdminClient() {
     }
     if (res.ok && data) {
       setManifest(data.manifest);
+      if (Array.isArray(data.projets)) setProjets(data.projets);
       setConfigured(data.configured);
       setPwd(motDePasse);
       try {
@@ -133,6 +278,8 @@ export default function AdminClient() {
     setStatut("login");
   }
 
+  /* ── Images ────────────────────────────────────────────── */
+
   async function upload(cible: { slot?: string; galerie?: string }, files: FileList | null) {
     if (!files || files.length === 0) return;
     setBusy(true);
@@ -159,7 +306,7 @@ export default function AdminClient() {
     setBusy(false);
   }
 
-  async function supprimer(payload: { slot?: string; galerie?: string; src?: string }) {
+  async function supprimerImage(payload: { slot?: string; galerie?: string; src?: string }) {
     setBusy(true);
     setMessage(null);
     const res = await fetch("/api/admin/delete", {
@@ -173,87 +320,50 @@ export default function AdminClient() {
     setBusy(false);
   }
 
-  function EditeurProjet({ projet }: { projet: Projet }) {
-    const slotCover = `projet.${projet.slug}.cover`;
-    const cover = manifest.slots[slotCover] ?? null;
-    const galerie = manifest.galeries[projet.slug] ?? [];
+  /* ── Projets ───────────────────────────────────────────── */
 
-    return (
-      <div className="carte">
-        <div className="flex flex-wrap items-baseline justify-between gap-3">
-          <div>
-            <h3 className="text-lg font-semibold text-clair">{projet.titre}</h3>
-            <p className="text-xs uppercase tracking-wider text-doux">{projet.type}</p>
-          </div>
-          <Link href={`/projets/${projet.slug}`} className="text-xs text-accent hover:underline">
-            Voir la page →
-          </Link>
-        </div>
-
-        {/* Image principale */}
-        <div className="mt-4 flex items-center gap-4">
-          <Apercu src={cover} />
-          <div className="flex flex-col gap-2">
-            <p className="text-xs text-doux">
-              Image principale — cartes de l&apos;accueil + page dédiée
-            </p>
-            <div className="flex items-center gap-3">
-              <BoutonFichier
-                label={cover ? "Remplacer" : "Ajouter"}
-                disabled={busy}
-                onFiles={(f) => upload({ slot: slotCover }, f)}
-              />
-              {cover && (
-                <button
-                  type="button"
-                  onClick={() => supprimer({ slot: slotCover })}
-                  className="text-xs text-red-400/80 transition-colors hover:text-red-400"
-                >
-                  Supprimer
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Galerie */}
-        <div className="mt-5 border-t border-white/5 pt-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <p className="text-xs text-doux">
-              Galerie de la page dédiée ({galerie.length} image{galerie.length > 1 ? "s" : ""})
-            </p>
-            <BoutonFichier
-              label="Ajouter des images"
-              multiple
-              disabled={busy}
-              onFiles={(f) => upload({ galerie: projet.slug }, f)}
-            />
-          </div>
-          {galerie.length > 0 && (
-            <div className="mt-3 flex flex-wrap gap-3">
-              {galerie.map((src) => (
-                <div key={src} className="group relative">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={src}
-                    alt=""
-                    className="h-20 w-28 rounded-lg border border-white/10 object-cover"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => supprimer({ galerie: projet.slug, src })}
-                    className="absolute -right-2 -top-2 hidden h-6 w-6 items-center justify-center rounded-full bg-red-500 text-xs text-white group-hover:flex"
-                    aria-label="Supprimer cette image"
-                  >
-                    ×
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
+  async function sauverProjet(projet: ProjetPayload, slugOriginal?: string) {
+    setBusy(true);
+    setMessage(null);
+    const res = await fetch("/api/admin/projets", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", "x-admin-password": pwd },
+      body: JSON.stringify({ projet, slugOriginal }),
+    });
+    const err = res.ok ? null : (await res.json().catch(() => null))?.error;
+    await refresh(pwd);
+    if (!err) {
+      setEnEdition(null);
+      setCreation(false);
+    }
+    setMessage(
+      err ??
+        (slugOriginal
+          ? "Projet enregistré ✓ — le site public est à jour."
+          : "Projet créé ✓ — pense à lui ajouter une image.")
     );
+    setBusy(false);
+  }
+
+  async function supprimerProjet(projet: Projet) {
+    if (
+      !window.confirm(
+        `Supprimer « ${projet.titre} » ?\n\nSa page, ses images et sa galerie seront retirées du site. Cette action est définitive.`
+      )
+    ) {
+      return;
+    }
+    setBusy(true);
+    setMessage(null);
+    const res = await fetch("/api/admin/projets", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json", "x-admin-password": pwd },
+      body: JSON.stringify({ slug: projet.slug }),
+    });
+    const err = res.ok ? null : (await res.json().catch(() => null))?.error;
+    await refresh(pwd);
+    setMessage(err ?? "Projet supprimé ✓ — le site public est à jour.");
+    setBusy(false);
   }
 
   /* ── Écrans d'état ─────────────────────────────────────── */
@@ -327,6 +437,8 @@ export default function AdminClient() {
   /* ── Panel ─────────────────────────────────────────────── */
 
   const portrait = manifest.slots["hero.portrait"] ?? null;
+  const projetsOnglet =
+    onglet === "accueil" ? [] : projets.filter((p) => p.pole === onglet);
 
   return (
     <main className="min-h-screen pb-28">
@@ -335,7 +447,7 @@ export default function AdminClient() {
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
           <p className="text-lg font-semibold">
             SIL<span className="text-accent">ART</span>{" "}
-            <span className="text-sm font-normal text-doux">· Panel admin — Images</span>
+            <span className="text-sm font-normal text-doux">· Panel admin</span>
           </p>
           <div className="flex items-center gap-5">
             <Link href="/" className="text-sm text-doux transition-colors hover:text-clair">
@@ -354,13 +466,13 @@ export default function AdminClient() {
 
       <div className="mx-auto max-w-6xl px-6 pt-8">
         <p className="text-sm text-doux">
-          Les changements sont <span className="text-clair">publiés instantanément</span> sur
-          le site : pas de bouton à cliquer, tout est en ligne dès l&apos;upload.
+          Images <span className="text-clair">et textes des projets</span> — les changements
+          sont <span className="text-clair">publiés instantanément</span> sur le site.
         </p>
 
         {!configured.blob && (
           <p className="mt-3 rounded-lg border border-yellow-500/30 bg-yellow-500/10 px-4 py-2 text-xs text-yellow-200">
-            Stockage Blob non configuré : les uploads échoueront. Vercel → Storage →
+            Stockage Blob non configuré : les modifications échoueront. Vercel → Storage →
             Create → Blob, connecte le store au projet, puis redéploie.
           </p>
         )}
@@ -371,7 +483,11 @@ export default function AdminClient() {
             <button
               key={o.id}
               type="button"
-              onClick={() => setOnglet(o.id)}
+              onClick={() => {
+                setOnglet(o.id);
+                setEnEdition(null);
+                setCreation(false);
+              }}
               className={`rounded-full border px-4 py-2 text-xs uppercase tracking-wider transition-colors ${
                 onglet === o.id
                   ? "border-clair bg-clair text-nuit"
@@ -404,7 +520,7 @@ export default function AdminClient() {
                   {portrait && (
                     <button
                       type="button"
-                      onClick={() => supprimer({ slot: "hero.portrait" })}
+                      onClick={() => supprimerImage({ slot: "hero.portrait" })}
                       className="text-left text-xs text-red-400/80 transition-colors hover:text-red-400"
                     >
                       Supprimer
@@ -414,7 +530,53 @@ export default function AdminClient() {
               </div>
             </div>
           ) : (
-            projetsParPole(onglet).map((p) => <EditeurProjet key={p.slug} projet={p} />)
+            <>
+              {/* Nouveau projet */}
+              {creation ? (
+                <div className="carte border-accent/40">
+                  <h3 className="text-lg font-semibold text-clair">Nouveau projet</h3>
+                  <p className="mb-4 mt-1 text-xs text-doux">
+                    Sa page /projets/… est créée automatiquement ; tu pourras lui ajouter
+                    une image et une galerie juste après.
+                  </p>
+                  <ProjetForm
+                    poleParDefaut={onglet}
+                    busy={busy}
+                    onSubmit={(p) => sauverProjet(p)}
+                    onCancel={() => setCreation(false)}
+                  />
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCreation(true);
+                    setEnEdition(null);
+                  }}
+                  className="w-full rounded-2xl border border-dashed border-white/20 px-6 py-4 text-sm text-doux transition-colors hover:border-accent/60 hover:text-clair"
+                >
+                  + Ajouter un projet dans « {ONGLETS.find((o) => o.id === onglet)?.label} »
+                </button>
+              )}
+
+              {projetsOnglet.map((p) => (
+                <EditeurProjet
+                  key={p.slug}
+                  projet={p}
+                  manifest={manifest}
+                  busy={busy}
+                  ouvert={enEdition === p.slug}
+                  onToggleEdition={() => {
+                    setEnEdition(enEdition === p.slug ? null : p.slug);
+                    setCreation(false);
+                  }}
+                  onUpload={upload}
+                  onDeleteImage={supprimerImage}
+                  onSave={(payload, slugOriginal) => sauverProjet(payload, slugOriginal)}
+                  onDeleteProjet={supprimerProjet}
+                />
+              ))}
+            </>
           )}
         </div>
       </div>

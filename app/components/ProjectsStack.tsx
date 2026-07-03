@@ -3,7 +3,7 @@
 import { useRef, type CSSProperties } from "react";
 import Link from "next/link";
 import { motion, useScroll, useTransform, type MotionValue } from "framer-motion";
-import { poles, projetsParPole, type Pole } from "@/app/data/projets";
+import { poles, projetsParPole, type Pole, type Projet } from "@/app/data/projets";
 import { slotImage, type ImagesManifest } from "@/app/data/images";
 
 function CartePole({
@@ -12,16 +12,18 @@ function CartePole({
   total,
   progress,
   manifest,
+  projets,
 }: {
   pole: { id: Pole; titre: string; sousTitre: string };
   index: number;
   total: number;
   progress: MotionValue<number>;
   manifest: ImagesManifest;
+  projets: Projet[];
 }) {
   const targetScale = 1 - (total - 1 - index) * 0.03;
   const scale = useTransform(progress, [index / total, 1], [1, targetScale]);
-  const items = projetsParPole(pole.id);
+  const items = projetsParPole(projets, pole.id);
 
   return (
     <div
@@ -99,7 +101,13 @@ function CartePole({
   );
 }
 
-export default function ProjectsStack({ manifest }: { manifest: ImagesManifest }) {
+export default function ProjectsStack({
+  manifest,
+  projets,
+}: {
+  manifest: ImagesManifest;
+  projets: Projet[];
+}) {
   const container = useRef<HTMLDivElement>(null);
   const { scrollYProgress } = useScroll({
     target: container,
@@ -116,6 +124,7 @@ export default function ProjectsStack({ manifest }: { manifest: ImagesManifest }
           total={poles.length}
           progress={scrollYProgress}
           manifest={manifest}
+          projets={projets}
         />
       ))}
     </div>

@@ -3,6 +3,7 @@ import { experiences } from "@/app/data/projets";
 import { site } from "@/app/data/site";
 import { slotImage } from "@/app/data/images";
 import { getImagesManifest } from "@/app/data/images-server";
+import { getProjets } from "@/app/data/projets-server";
 import FadeIn from "@/app/components/FadeIn";
 import Magnet from "@/app/components/Magnet";
 import AnimatedText from "@/app/components/AnimatedText";
@@ -79,6 +80,7 @@ const pilulesApropos = [
 
 export default async function Home() {
   const manifest = await getImagesManifest();
+  const projets = await getProjets();
   const portrait = slotImage(manifest, "hero.portrait");
 
   return (
@@ -153,7 +155,7 @@ export default async function Home() {
       </section>
 
       {/* ── Marquee projets ──────────────────────────────── */}
-      <MarqueeSection manifest={manifest} />
+      <MarqueeSection manifest={manifest} projets={projets} />
 
       {/* ── À propos ─────────────────────────────────────── */}
       <section
@@ -288,7 +290,7 @@ export default async function Home() {
           </p>
         </FadeIn>
 
-        <ProjectsStack manifest={manifest} />
+        <ProjectsStack manifest={manifest} projets={projets} />
       </section>
 
       {/* ── Contact ──────────────────────────────────────── */}

@@ -32,7 +32,12 @@ export const poles: { id: Pole; titre: string; sousTitre: string }[] = [
   },
 ];
 
-export const projets: Projet[] = [
+/**
+ * Projets par défaut : utilisés comme base de départ (seed) et comme
+ * fallback quand Vercel Blob n'est pas configuré. En production, la
+ * liste vivante est stockée sur le Blob (projets.json) et gérée via /admin.
+ */
+export const projetsDefaut: Projet[] = [
   // ── Développement web & UI/UX ─────────────────────────────
   {
     slug: "van-alaska",
@@ -307,12 +312,12 @@ export const projets: Projet[] = [
   },
 ];
 
-export function getProjet(slug: string): Projet | undefined {
-  return projets.find((p) => p.slug === slug);
+export function getProjet(liste: Projet[], slug: string): Projet | undefined {
+  return liste.find((p) => p.slug === slug);
 }
 
-export function projetsParPole(pole: Pole): Projet[] {
-  return projets.filter((p) => p.pole === pole);
+export function projetsParPole(liste: Projet[], pole: Pole): Projet[] {
+  return liste.filter((p) => p.pole === pole);
 }
 
 // ── Expériences ─────────────────────────────────────────────

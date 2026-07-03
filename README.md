@@ -34,15 +34,20 @@ npm run start    # sur http://localhost:3001
 - `app/data/site.ts` — infos du site et mentions légales
 - `app/data/images.json` — manifeste des images (géré via le panel admin)
 
-## Panel admin (images)
+## Panel admin (images + projets)
 
 Accessible en ligne : **https://bysilart.fr/admin** (protégé par mot de passe).
 
-- Images triées par page/catégorie (Accueil, Dev, Branding, Audiovisuel)
-- Ajout / remplacement / suppression : portrait du hero, image principale
-  de chaque projet (cartes + page dédiée) et galeries des pages dédiées
-- Publication **instantanée** : les fichiers sont stockés sur Vercel Blob et
-  le site est revalidé à chaque modification (aucun redéploiement nécessaire)
+- Contenu trié par page/catégorie (Accueil, Dev, Branding, Audiovisuel)
+- **Images** : portrait du hero, image principale de chaque projet
+  (cartes + page dédiée) et galeries des pages dédiées
+- **Projets** : création, édition des textes (titre, type, résumé,
+  description, tags, rôle, année, lien) et suppression — la page
+  /projets/… est générée automatiquement
+- Publication **instantanée** : données et fichiers sur Vercel Blob,
+  site revalidé à chaque modification (aucun redéploiement nécessaire)
+- `app/data/projets.ts` sert de liste par défaut tant que le panel n'a
+  jamais enregistré (puis la source de vérité devient `projets.json` sur le Blob)
 
 Prérequis (une seule fois, sur le dashboard Vercel) :
 

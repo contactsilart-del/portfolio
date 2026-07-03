@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { checkAuth, configuration, lireManifest } from "../admin-utils";
+import { checkAuth, configuration, lireManifest, lireProjets } from "../admin-utils";
 
 export const dynamic = "force-dynamic";
 
@@ -13,6 +13,7 @@ export async function GET(req: Request) {
   }
   return NextResponse.json({
     manifest: await lireManifest(),
+    projets: await lireProjets(),
     configured: configuration(),
   });
 }

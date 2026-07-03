@@ -2,11 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { projets, type Projet } from "@/app/data/projets";
+import type { Projet } from "@/app/data/projets";
 import { slotImage, type ImagesManifest } from "@/app/data/images";
-
-const row1 = projets.filter((p) => p.pole === "dev");
-const row2 = projets.filter((p) => p.pole !== "dev");
 
 function Tuile({ projet, cover }: { projet: Projet; cover: string | null }) {
   if (cover) {
@@ -81,7 +78,15 @@ function MarqueeRow({
   );
 }
 
-export default function MarqueeSection({ manifest }: { manifest: ImagesManifest }) {
+export default function MarqueeSection({
+  manifest,
+  projets,
+}: {
+  manifest: ImagesManifest;
+  projets: Projet[];
+}) {
+  const row1 = projets.filter((p) => p.pole === "dev");
+  const row2 = projets.filter((p) => p.pole !== "dev");
   const sectionRef = useRef<HTMLElement>(null);
   const [offset, setOffset] = useState(0);
 

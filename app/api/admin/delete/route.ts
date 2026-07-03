@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
 import { del } from "@vercel/blob";
-import { revalidatePath, revalidateTag } from "next/cache";
 import {
   blobConfigured,
   checkAuth,
   ecrireManifest,
   estUrlBlob,
   lireManifest,
+  revaliderSite,
 } from "../admin-utils";
 
 export async function POST(req: Request) {
@@ -58,9 +58,6 @@ export async function POST(req: Request) {
 
   await ecrireManifest(manifest);
 
-  revalidateTag("images-manifest");
-  revalidatePath("/");
-  revalidatePath("/projets/[slug]", "page");
-
+  revaliderSite();
   return NextResponse.json({ ok: true });
 }
