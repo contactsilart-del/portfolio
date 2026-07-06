@@ -9,6 +9,7 @@ import Magnet from "@/app/components/Magnet";
 import AnimatedText from "@/app/components/AnimatedText";
 import MarqueeSection from "@/app/components/MarqueeSection";
 import ProjectsStack from "@/app/components/ProjectsStack";
+import LogosClients from "@/app/components/LogosClients";
 
 const liensNav = [
   { href: "#projets", label: "Projets" },
@@ -292,6 +293,9 @@ export default async function Home() {
 
         <ProjectsStack manifest={manifest} projets={projets} />
       </section>
+
+      {/* ── Ils me font confiance ────────────────────────── */}
+      <LogosClients manifest={manifest} />
 
       {/* ── Contact ──────────────────────────────────────── */}
       <section id="contact" className="section section-y text-center">

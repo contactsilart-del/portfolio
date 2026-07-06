@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { poles, projetsDefaut, type Pole, type Projet } from "@/app/data/projets";
-import type { ImagesManifest } from "@/app/data/images";
+import { GALERIE_LOGOS, type ImagesManifest } from "@/app/data/images";
 import ProjetForm, { type ProjetPayload } from "./ProjetForm";
 
 const PWD_KEY = "silart-admin-pwd";
@@ -437,6 +437,7 @@ export default function AdminClient() {
   /* ── Panel ─────────────────────────────────────────────── */
 
   const portrait = manifest.slots["hero.portrait"] ?? null;
+  const logos = manifest.galeries[GALERIE_LOGOS] ?? [];
   const projetsOnglet =
     onglet === "accueil" ? [] : projets.filter((p) => p.pole === onglet);
 
@@ -502,6 +503,7 @@ export default function AdminClient() {
         {/* Contenu de l'onglet */}
         <div className="mt-8 space-y-5">
           {onglet === "accueil" ? (
+            <>
             <div className="carte">
               <h3 className="text-lg font-semibold text-clair">Portrait du hero</h3>
               <p className="mt-1 text-xs text-doux">
@@ -529,6 +531,55 @@ export default function AdminClient() {
                 </div>
               </div>
             </div>
+
+            {/* Logos « Ils me font confiance » */}
+            <div className="carte">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <h3 className="text-lg font-semibold text-clair">
+                  « Ils me font confiance » — logos
+                </h3>
+                <BoutonFichier
+                  label="Ajouter des logos"
+                  multiple
+                  disabled={busy}
+                  onFiles={(f) => upload({ galerie: GALERIE_LOGOS }, f)}
+                />
+              </div>
+              <p className="mt-1 text-xs text-doux">
+                Bande de logos qui défile en bas de l&apos;accueil. Recommandé :
+                PNG ou SVG sur fond transparent (les logos sont affichés en gris
+                clair, en couleur au survol).{" "}
+                {logos.length === 0 && (
+                  <span className="text-yellow-200/90">
+                    Tant qu&apos;aucun logo n&apos;est ajouté ici, le site affiche
+                    des logos d&apos;exemple fictifs.
+                  </span>
+                )}
+              </p>
+              {logos.length > 0 && (
+                <div className="mt-4 flex flex-wrap gap-3">
+                  {logos.map((src) => (
+                    <div key={src} className="group relative">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={src}
+                        alt=""
+                        className="h-14 w-28 rounded-lg border border-white/10 bg-white/5 object-contain p-2"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => supprimerImage({ galerie: GALERIE_LOGOS, src })}
+                        className="absolute -right-2 -top-2 hidden h-6 w-6 items-center justify-center rounded-full bg-red-500 text-xs text-white group-hover:flex"
+                        aria-label="Supprimer ce logo"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            </>
           ) : (
             <>
               {/* Nouveau projet */}

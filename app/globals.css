@@ -51,6 +51,28 @@
   }
 }
 
+/* Bande « Ils me font confiance » : défilement continu des logos */
+@keyframes logos-defile {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+.logos-piste {
+  animation: logos-defile var(--duree, 32s) linear infinite;
+  will-change: transform;
+}
+.logos-piste:hover {
+  animation-play-state: paused;
+}
+@media (prefers-reduced-motion: reduce) {
+  .logos-piste {
+    animation: none;
+  }
+}
+
 /* Léger halo décoratif derrière le hero */
 .halo {
   background: radial-gradient(

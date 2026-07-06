@@ -20,3 +20,23 @@ export function slotImage(manifest: ImagesManifest, id: string): string | null {
 export function galerieImages(manifest: ImagesManifest, slug: string): string[] {
   return manifest.galeries[slug] ?? [];
 }
+
+/**
+ * Galerie spéciale « Ils me font confiance » (bande de logos de l'accueil).
+ * La clé contient un underscore : impossible à confondre avec un slug de
+ * projet (les slugs générés n'en contiennent jamais).
+ */
+export const GALERIE_LOGOS = "logos_clients";
+
+/** Logos d'exemple (fictifs, dessinés pour le site) affichés tant que
+ *  le panel admin n'a aucun logo. */
+export const logosClientsDefaut: string[] = [
+  "/images/logos/logo-1.svg",
+  "/images/logos/logo-2.svg",
+  "/images/logos/logo-3.svg",
+  "/images/logos/logo-4.svg",
+  "/images/logos/logo-5.svg",
+  "/images/logos/logo-6.svg",
+  "/images/logos/logo-7.svg",
+  "/images/logos/logo-8.svg",
+];
