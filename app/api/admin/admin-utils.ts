@@ -29,6 +29,15 @@ export function configuration() {
   return { password: passwordConfigured(), blob: blobConfigured() };
 }
 
+/** Comparaison à temps constant (via hachage pour gérer les longueurs différentes). */
+export function verifierMotDePasse(donne: unknown): boolean {
+  if (!passwordConfigured() || typeof donne !== "string") return false;
+  const attendu = process.env.ADMIN_PASSWORD as string;
+  const a = crypto.createHash("sha256").update(donne).digest();
+  const b = crypto.createHash("sha256").update(attendu).digest();
+  return crypto.timingSafeEqual(a, b);
+}
+
 /**
  * Vérifie le mot de passe admin (en-tête x-admin-password).
  * Retourne null si OK, sinon { status, error }.
@@ -41,12 +50,7 @@ export function checkAuth(req: Request): { status: number; error: string } | nul
         "ADMIN_PASSWORD n'est pas configuré. Sur Vercel : Settings → Environment Variables → ajoute ADMIN_PASSWORD, puis redéploie.",
     };
   }
-  const donne = req.headers.get("x-admin-password") ?? "";
-  const attendu = process.env.ADMIN_PASSWORD as string;
-  // Comparaison à temps constant (via hachage pour gérer les longueurs différentes)
-  const a = crypto.createHash("sha256").update(donne).digest();
-  const b = crypto.createHash("sha256").update(attendu).digest();
-  if (!crypto.timingSafeEqual(a, b)) {
+  if (!verifierMotDePasse(req.headers.get("x-admin-password") ?? "")) {
     return { status: 401, error: "Mot de passe incorrect." };
   }
   return null;

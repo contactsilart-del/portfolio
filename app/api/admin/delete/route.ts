@@ -59,5 +59,5 @@ export async function POST(req: Request) {
   await ecrireManifest(manifest);
 
   revaliderSite();
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, manifest });
 }

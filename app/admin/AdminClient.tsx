@@ -2,11 +2,14 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { upload as blobUpload } from "@vercel/blob/client";
 import { poles, projetsDefaut, type Pole, type Projet } from "@/app/data/projets";
 import { GALERIE_LOGOS, type ImagesManifest } from "@/app/data/images";
 import ProjetForm, { type ProjetPayload } from "./ProjetForm";
 
 const PWD_KEY = "silart-admin-pwd";
+const EXTENSIONS_OK = new Set(["jpg", "jpeg", "png", "webp", "gif", "avif", "svg"]);
+const MAX_UPLOAD = 25 * 1024 * 1024; // 25 Mo
 
 type Configured = { password: boolean; blob: boolean };
 type Statut = "chargement" | "login" | "config" | "ok";
@@ -280,29 +283,69 @@ export default function AdminClient() {
 
   /* ── Images ────────────────────────────────────────────── */
 
+  /**
+   * Upload DIRECT navigateur → Vercel Blob (les fonctions Vercel refusent
+   * les corps > 4,5 Mo, donc les photos ne transitent plus par le serveur),
+   * puis rattachement au manifeste via /api/admin/attach.
+   */
   async function upload(cible: { slot?: string; galerie?: string }, files: FileList | null) {
     if (!files || files.length === 0) return;
     setBusy(true);
     setMessage(null);
     let erreur: string | null = null;
+
     for (const file of Array.from(files)) {
-      const form = new FormData();
-      form.append("file", file);
-      if (cible.slot) form.append("slot", cible.slot);
-      if (cible.galerie) form.append("galerie", cible.galerie);
-      const res = await fetch("/api/admin/upload", {
-        method: "POST",
-        headers: { "x-admin-password": pwd },
-        body: form,
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => null);
-        erreur = err?.error ?? "Erreur pendant l'upload.";
+      const ext = (file.name.includes(".") ? file.name.split(".").pop()! : "").toLowerCase();
+      if (!EXTENSIONS_OK.has(ext)) {
+        erreur =
+          `« ${file.name} » : format non supporté. Utilise JPG, PNG, WebP, GIF, AVIF ou SVG.` +
+          (ext === "heic" || ext === "heif"
+            ? " Sur iPhone : Réglages → Appareil photo → Formats → « Le plus compatible », ou exporte la photo en JPG."
+            : "");
+        break;
+      }
+      if (file.size > MAX_UPLOAD) {
+        erreur = `« ${file.name} » est trop lourd (${(file.size / 1024 / 1024).toFixed(1)} Mo, max 25 Mo).`;
+        break;
+      }
+
+      try {
+        const base = (cible.slot ?? `galerie-${cible.galerie}`)
+          .toLowerCase()
+          .replace(/[^a-z0-9-]+/g, "-")
+          .replace(/^-+|-+$/g, "");
+        // 1. Le fichier part directement du navigateur vers le Blob
+        const blob = await blobUpload(`images/${base}-${Date.now()}.${ext}`, file, {
+          access: "public",
+          handleUploadUrl: "/api/admin/upload-token",
+          clientPayload: JSON.stringify({ mdp: pwd }),
+          contentType: file.type || undefined,
+          multipart: file.size > 8 * 1024 * 1024,
+        });
+        // 2. Puis on le rattache au manifeste du site
+        const res = await fetch("/api/admin/attach", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "x-admin-password": pwd },
+          body: JSON.stringify({ url: blob.url, slot: cible.slot, galerie: cible.galerie }),
+        });
+        const data = await res.json().catch(() => null);
+        if (!res.ok) {
+          erreur = data?.error ?? "Erreur pendant la publication.";
+          break;
+        }
+        if (data?.manifest) setManifest(data.manifest);
+      } catch (e) {
+        erreur = e instanceof Error ? e.message : "Erreur pendant l'upload.";
         break;
       }
     }
-    await refresh(pwd);
-    setMessage(erreur ?? "En ligne ✓ — le site public est à jour.");
+
+    if (erreur) {
+      await refresh(pwd);
+      setMessage(`⚠️ ${erreur}`);
+    } else {
+      setMessage("En ligne ✓ — le site public est à jour.");
+    }
     setBusy(false);
   }
 
@@ -314,9 +357,14 @@ export default function AdminClient() {
       headers: { "Content-Type": "application/json", "x-admin-password": pwd },
       body: JSON.stringify(payload),
     });
-    const err = res.ok ? null : (await res.json().catch(() => null))?.error;
-    await refresh(pwd);
-    setMessage(err ?? "Supprimé ✓ — le site public est à jour.");
+    const data = await res.json().catch(() => null);
+    if (res.ok && data?.manifest) {
+      setManifest(data.manifest);
+      setMessage("Supprimé ✓ — le site public est à jour.");
+    } else {
+      await refresh(pwd);
+      setMessage(`⚠️ ${data?.error ?? "Erreur pendant la suppression."}`);
+    }
     setBusy(false);
   }
 
