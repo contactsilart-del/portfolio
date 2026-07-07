@@ -2,21 +2,24 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { upload as blobUpload } from "@vercel/blob/client";
 import { poles, projetsDefaut, type Pole, type Projet } from "@/app/data/projets";
 import { GALERIE_LOGOS, type ImagesManifest } from "@/app/data/images";
 import ProjetForm, { type ProjetPayload } from "./ProjetForm";
 
 const PWD_KEY = "silart-admin-pwd";
 const EXTENSIONS_OK = new Set(["jpg", "jpeg", "png", "webp", "gif", "avif", "svg"]);
-const MAX_UPLOAD = 25 * 1024 * 1024; // 25 Mo
+const MAX_UPLOAD = 25 * 1024 * 1024; // 25 Mo avant compression
 const MAX_DIMENSION = 2400; // px — largement suffisant pour un affichage web
+// Les fichiers compressés partent en base64 vers l'API (limite Vercel 4,5 Mo
+// par requête) : on découpe en lots pour rester en dessous
+const MAX_LOT_BASE64 = 3 * 1024 * 1024;
+const MSG_OK = "Publié ✓ — en ligne dans ~1 minute (le site se redéploie).";
 
 /**
  * Compresse une image dans le navigateur avant l'upload : redimensionnée
  * à 2400 px max et ré-encodée en WebP. Divise le poids par ~10-20 →
- * stockage et transfert Blob économisés (limités sur le plan gratuit),
- * et site plus rapide. SVG (vectoriel) et GIF (animation) partent tels quels.
+ * dépôt GitHub léger et site plus rapide. SVG (vectoriel) et GIF
+ * (animation) partent tels quels.
  */
 async function compresserImage(
   file: File
@@ -49,7 +52,18 @@ async function compresserImage(
   return original;
 }
 
-type Configured = { password: boolean; blob: boolean };
+/** Blob → chaîne base64 (par morceaux pour ne pas saturer la pile). */
+async function enBase64(corps: Blob): Promise<string> {
+  const octets = new Uint8Array(await corps.arrayBuffer());
+  let binaire = "";
+  const MORCEAU = 0x8000;
+  for (let i = 0; i < octets.length; i += MORCEAU) {
+    binaire += String.fromCharCode.apply(null, Array.from(octets.subarray(i, i + MORCEAU)));
+  }
+  return btoa(binaire);
+}
+
+type Configured = { password: boolean; github: boolean };
 type Statut = "chargement" | "login" | "config" | "ok";
 
 const ONGLETS: { id: "accueil" | Pole; label: string }[] = [
@@ -255,7 +269,7 @@ export default function AdminClient() {
   const [pwd, setPwd] = useState("");
   const [saisie, setSaisie] = useState("");
   const [erreurLogin, setErreurLogin] = useState<string | null>(null);
-  const [configured, setConfigured] = useState<Configured>({ password: false, blob: false });
+  const [configured, setConfigured] = useState<Configured>({ password: false, github: false });
   const [manifest, setManifest] = useState<ImagesManifest>({ slots: {}, galeries: {} });
   const [projets, setProjets] = useState<Projet[]>(projetsDefaut);
   const [onglet, setOnglet] = useState<"accueil" | Pole>("accueil");
@@ -272,7 +286,7 @@ export default function AdminClient() {
     const data = await res.json().catch(() => null);
 
     if (res.status === 503) {
-      setConfigured(data?.configured ?? { password: false, blob: false });
+      setConfigured(data?.configured ?? { password: false, github: false });
       setStatut("config");
       return false;
     }
@@ -322,19 +336,21 @@ export default function AdminClient() {
   /* ── Images ────────────────────────────────────────────── */
 
   /**
-   * Upload DIRECT navigateur → Vercel Blob (les fonctions Vercel refusent
-   * les corps > 4,5 Mo, donc les photos ne transitent plus par le serveur),
-   * puis rattachement au manifeste via /api/admin/attach.
+   * Upload : compression dans le navigateur (WebP 2400 px), puis envoi en
+   * base64 à l'API qui committe les fichiers + le manifeste dans le dépôt
+   * GitHub (un seul commit par lot → un seul redéploiement Vercel).
    */
   async function upload(cible: { slot?: string; galerie?: string }, files: FileList | null) {
     if (!files || files.length === 0) return;
     setBusy(true);
     setMessage(null);
     let erreur: string | null = null;
-    // Chaque rattachement part de l'état renvoyé par le précédent :
+    // Chaque lot part de l'état renvoyé par le précédent :
     // aucun ajout ne peut en écraser un autre
     let manifestCourant = manifest;
 
+    // 1. Validation + compression de tous les fichiers
+    const prepares: { ext: string; donneesBase64: string }[] = [];
     for (const file of Array.from(files)) {
       const ext = (file.name.includes(".") ? file.name.split(".").pop()! : "").toLowerCase();
       if (!EXTENSIONS_OK.has(ext)) {
@@ -349,54 +365,60 @@ export default function AdminClient() {
         erreur = `« ${file.name} » est trop lourd (${(file.size / 1024 / 1024).toFixed(1)} Mo, max 25 Mo).`;
         break;
       }
+      const { corps, ext: extFinale } = await compresserImage(file);
+      const donneesBase64 = await enBase64(corps);
+      if (donneesBase64.length > MAX_LOT_BASE64) {
+        erreur = `« ${file.name} » reste trop lourd même compressé (max ~2 Mo pour un GIF/SVG).`;
+        break;
+      }
+      prepares.push({ ext: extFinale, donneesBase64 });
+    }
 
-      try {
-        const base = (cible.slot ?? `galerie-${cible.galerie}`)
-          .toLowerCase()
-          .replace(/[^a-z0-9-]+/g, "-")
-          .replace(/^-+|-+$/g, "");
-        // 1. Compression dans le navigateur (WebP, 2400 px max)
-        const { corps, ext: extFinale, type } = await compresserImage(file);
-        // 2. Le fichier part directement du navigateur vers le Blob
-        const blob = await blobUpload(`images/${base}-${Date.now()}.${extFinale}`, corps, {
-          access: "public",
-          handleUploadUrl: "/api/admin/upload-token",
-          clientPayload: JSON.stringify({ mdp: pwd }),
-          contentType: type || undefined,
-          multipart: corps.size > 8 * 1024 * 1024,
-        });
-        // 3. Puis on le rattache au manifeste du site
-        const res = await fetch("/api/admin/attach", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "x-admin-password": pwd },
-          body: JSON.stringify({
-            url: blob.url,
-            slot: cible.slot,
-            galerie: cible.galerie,
-            base: manifestCourant,
-          }),
-        });
-        const data = await res.json().catch(() => null);
-        if (!res.ok) {
-          erreur = data?.error ?? "Erreur pendant la publication.";
+    // 2. Envoi par lots (≤ 3 Mo par requête), un commit par lot
+    if (!erreur) {
+      let lot: typeof prepares = [];
+      let tailleLot = 0;
+      const lots: (typeof prepares)[] = [];
+      for (const p of prepares) {
+        if (lot.length > 0 && tailleLot + p.donneesBase64.length > MAX_LOT_BASE64) {
+          lots.push(lot);
+          lot = [];
+          tailleLot = 0;
+        }
+        lot.push(p);
+        tailleLot += p.donneesBase64.length;
+      }
+      if (lot.length > 0) lots.push(lot);
+
+      for (const l of lots) {
+        try {
+          const res = await fetch("/api/admin/upload", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "x-admin-password": pwd },
+            body: JSON.stringify({
+              fichiers: l,
+              slot: cible.slot,
+              galerie: cible.galerie,
+              base: manifestCourant,
+            }),
+          });
+          const data = await res.json().catch(() => null);
+          if (!res.ok) {
+            erreur = data?.error ?? "Erreur pendant la publication.";
+            break;
+          }
+          if (data?.manifest) {
+            manifestCourant = data.manifest;
+            setManifest(data.manifest);
+          }
+        } catch (e) {
+          erreur = e instanceof Error ? e.message : "Erreur pendant l'upload.";
           break;
         }
-        if (data?.manifest) {
-          manifestCourant = data.manifest;
-          setManifest(data.manifest);
-        }
-      } catch (e) {
-        erreur = e instanceof Error ? e.message : "Erreur pendant l'upload.";
-        break;
       }
     }
 
-    if (erreur) {
-      await refresh(pwd);
-      setMessage(`⚠️ ${erreur}`);
-    } else {
-      setMessage("En ligne ✓ — le site public est à jour.");
-    }
+    setMessage(erreur ? `⚠️ ${erreur}` : MSG_OK);
     setBusy(false);
   }
 
@@ -411,7 +433,7 @@ export default function AdminClient() {
     const data = await res.json().catch(() => null);
     if (res.ok && data?.manifest) {
       setManifest(data.manifest);
-      setMessage("Supprimé ✓ — le site public est à jour.");
+      setMessage(`Supprimé ✓ — en ligne dans ~1 minute (le site se redéploie).`);
     } else {
       await refresh(pwd);
       setMessage(`⚠️ ${data?.error ?? "Erreur pendant la suppression."}`);
@@ -436,7 +458,7 @@ export default function AdminClient() {
       setCreation(false);
       setMessage(
         slugOriginal
-          ? "Projet enregistré ✓ — le site public est à jour."
+          ? `Projet enregistré ✓ — en ligne dans ~1 minute.`
           : "Projet créé ✓ — pense à lui ajouter une image."
       );
     } else {
@@ -464,7 +486,7 @@ export default function AdminClient() {
     if (res.ok && Array.isArray(data?.projets)) {
       setProjets(data.projets);
       if (data.manifest) setManifest(data.manifest);
-      setMessage("Projet supprimé ✓ — le site public est à jour.");
+      setMessage(`Projet supprimé ✓ — en ligne dans ~1 minute.`);
     } else {
       setMessage(`⚠️ ${data?.error ?? "Erreur pendant la suppression."}`);
     }
@@ -495,13 +517,17 @@ export default function AdminClient() {
                 avec le mot de passe de ton choix.
               </p>
             )}
-            {!configured.blob && (
+            {!configured.github && (
               <p>
-                <span className="text-clair">2. Stockage :</span> sur Vercel → onglet{" "}
-                <span className="text-clair">Storage</span> → Create →{" "}
-                <span className="text-clair">Blob</span> → connecte le store au projet
-                (la variable <code className="rounded bg-white/10 px-1.5 py-0.5">BLOB_READ_WRITE_TOKEN</code>{" "}
-                est ajoutée automatiquement).
+                <span className="text-clair">2. Jeton GitHub :</span> sur github.com →
+                Settings → Developer settings →{" "}
+                <span className="text-clair">Fine-grained personal access tokens</span> →
+                Generate new token. Repository access :{" "}
+                <span className="text-clair">Only select repositories → portfolio</span>.
+                Permissions → Repository → <span className="text-clair">Contents : Read
+                and write</span>. Puis sur Vercel → Settings → Environment Variables →
+                ajoute <code className="rounded bg-white/10 px-1.5 py-0.5">GITHUB_TOKEN</code>{" "}
+                avec la valeur du jeton.
               </p>
             )}
             <p>
@@ -572,14 +598,17 @@ export default function AdminClient() {
 
       <div className="mx-auto max-w-6xl px-6 pt-8">
         <p className="text-sm text-doux">
-          Images <span className="text-clair">et textes des projets</span> — les changements
-          sont <span className="text-clair">publiés instantanément</span> sur le site.
+          Images <span className="text-clair">et textes des projets</span> — chaque
+          modification est publiée et visible sur le site{" "}
+          <span className="text-clair">au bout d&apos;environ 1 minute</span> (redéploiement
+          automatique).
         </p>
 
-        {!configured.blob && (
+        {!configured.github && (
           <p className="mt-3 rounded-lg border border-yellow-500/30 bg-yellow-500/10 px-4 py-2 text-xs text-yellow-200">
-            Stockage Blob non configuré : les modifications échoueront. Vercel → Storage →
-            Create → Blob, connecte le store au projet, puis redéploie.
+            GITHUB_TOKEN non configuré : les modifications échoueront. Crée un jeton
+            GitHub (Contents : Read and write sur le dépôt portfolio) et ajoute-le dans
+            Vercel → Settings → Environment Variables, puis redéploie.
           </p>
         )}
 

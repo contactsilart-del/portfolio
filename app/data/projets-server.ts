@@ -1,5 +1,4 @@
-import { list } from "@vercel/blob";
-import { unstable_cache } from "next/cache";
+import projetsJson from "./projets.json";
 import { projetsDefaut, poles, type Projet } from "./projets";
 
 const polesValides = new Set(poles.map((p) => p.id));
@@ -36,47 +35,12 @@ export function normaliseProjets(raw: unknown): Projet[] | null {
 }
 
 /**
- * Liste des projets affichée sur le site.
- * - Avec Vercel Blob configuré : lecture de projets.json sur le Blob, cache
- *   Next taggé "projets-data" — invalidé par le panel admin à chaque modif.
- * - Sans Blob (dev local) ou tant que le panel n'a rien enregistré :
- *   fallback sur la liste par défaut de app/data/projets.ts.
+ * Liste des projets du site : app/data/projets.json, versionné dans le dépôt
+ * et mis à jour par le panel admin via des commits GitHub (redéploiement auto).
+ * Tant que le panel n'a jamais publié (fichier vide), la liste par défaut
+ * de app/data/projets.ts fait foi.
  */
-async function lireProjetsBlob(): Promise<Projet[]> {
-  try {
-    // Dernière version (projets/<timestamp>-….json : URL unique à chaque
-    // écriture, donc jamais de copie périmée), fallback projets.json racine
-    const { blobs } = await list({ prefix: "projets/" });
-    let cible =
-      blobs.length > 0
-        ? blobs.reduce((a, b) => (a.pathname > b.pathname ? a : b))
-        : null;
-    if (!cible) {
-      const l = await list({ prefix: "projets.json", limit: 1 });
-      cible = l.blobs[0] ?? null;
-    }
-    if (!cible) return projetsDefaut;
-    const res = await fetch(cible.url, { cache: "no-store" });
-    if (res.ok) {
-      const propres = normaliseProjets(await res.json());
-      if (propres) return propres;
-    }
-  } catch {
-    // Blob momentanément inaccessible : liste par défaut plutôt qu'une erreur
-  }
-  return projetsDefaut;
-}
-
-/**
- * Cache partagé pour toutes les pages : list() ne tourne qu'une fois par
- * revalidation (tag invalidé par le panel), pas une fois par page rendue —
- * les « opérations avancées » Blob sont limitées à 10 000/mois sur Hobby.
- */
-const lireProjetsCache = unstable_cache(lireProjetsBlob, ["projets-data"], {
-  tags: ["projets-data"],
-});
-
 export async function getProjets(): Promise<Projet[]> {
-  if (process.env.BLOB_READ_WRITE_TOKEN) return lireProjetsCache();
-  return projetsDefaut;
+  const liste = normaliseProjets(projetsJson);
+  return liste && liste.length > 0 ? liste : projetsDefaut;
 }

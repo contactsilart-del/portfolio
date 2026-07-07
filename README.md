@@ -39,25 +39,31 @@ npm run start    # sur http://localhost:3001
 Accessible en ligne : **https://bysilart.fr/admin** (protégé par mot de passe).
 
 - Contenu trié par page/catégorie (Accueil, Dev, Branding, Audiovisuel)
-- **Images** : portrait du hero, image principale de chaque projet
-  (cartes + page dédiée) et galeries des pages dédiées
+- **Images** : portrait du hero, logos « Ils me font confiance », image
+  principale de chaque projet (cartes + page dédiée) et galeries —
+  compressées automatiquement dans le navigateur (WebP, 2400 px max)
 - **Projets** : création, édition des textes (titre, type, résumé,
   description, tags, rôle, année, lien) et suppression — la page
   /projets/… est générée automatiquement
-- Publication **instantanée** : données et fichiers sur Vercel Blob,
-  site revalidé à chaque modification (aucun redéploiement nécessaire)
+- **Stockage : le dépôt GitHub lui-même.** Chaque action du panel crée un
+  commit (images dans `public/images/`, données dans `app/data/images.json`
+  et `app/data/projets.json`) → Vercel redéploie automatiquement (~1 min).
+  Aucun service externe, aucun quota, contenu versionné dans Git.
 - `app/data/projets.ts` sert de liste par défaut tant que le panel n'a
-  jamais enregistré (puis la source de vérité devient `projets.json` sur le Blob)
+  jamais publié (puis `app/data/projets.json` fait foi)
 
-Prérequis (une seule fois, sur le dashboard Vercel) :
+Prérequis (une seule fois) :
 
-1. **Storage → Create → Blob**, connecter le store au projet
-   (la variable `BLOB_READ_WRITE_TOKEN` est ajoutée automatiquement)
-2. **Settings → Environment Variables** : ajouter `ADMIN_PASSWORD`
+1. **Jeton GitHub** : github.com → Settings → Developer settings →
+   Fine-grained personal access tokens → Generate. Repository access :
+   *Only select repositories* → `portfolio`. Permissions → Repository →
+   **Contents : Read and write**.
+2. Sur Vercel → **Settings → Environment Variables** : ajouter
+   `GITHUB_TOKEN` (le jeton) et `ADMIN_PASSWORD` (mot de passe du panel)
 3. Redéployer
 
-En local sans token Blob, le site utilise le fallback `app/data/images.json`
-(vide) ; pour voir les images de production en dev : `vercel env pull .env.local`.
+Après un changement via le panel, penser à `git pull` avant de travailler
+en local (le panel committe sur `main`).
 
 ## Déploiement
 

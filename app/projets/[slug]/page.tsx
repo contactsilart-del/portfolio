@@ -1,16 +1,16 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { getProjet, projetsDefaut, poles } from "@/app/data/projets";
+import { getProjet, poles } from "@/app/data/projets";
 import { getProjets } from "@/app/data/projets-server";
 import { site } from "@/app/data/site";
 import { slotImage, galerieImages } from "@/app/data/images";
 import { getImagesManifest } from "@/app/data/images-server";
 
-export function generateStaticParams() {
-  // Slugs connus au build ; les projets ajoutés via /admin sont rendus
-  // à la demande (dynamicParams, actif par défaut)
-  return projetsDefaut.map((p) => ({ slug: p.slug }));
+export async function generateStaticParams() {
+  // Toutes les pages sont générées au build : les projets ajoutés via
+  // /admin déclenchent un redéploiement qui les inclut
+  return (await getProjets()).map((p) => ({ slug: p.slug }));
 }
 
 export async function generateMetadata({

@@ -1,22 +1,18 @@
 import { NextResponse } from "next/server";
-import { del } from "@vercel/blob";
 import { poles, type Pole, type Projet } from "@/app/data/projets";
 import { normaliseProjets } from "@/app/data/projets-server";
 import { normaliseManifest } from "@/app/data/images";
 import {
-  blobConfigured,
+  CHEMIN_MANIFEST,
+  CHEMIN_PROJETS,
+  ERREUR_GITHUB,
   checkAuth,
-  ecrireManifest,
-  ecrireProjets,
-  estUrlBlob,
+  cheminRepoImage,
   genererSlug,
   lireManifest,
   lireProjets,
-  revaliderSite,
 } from "../admin-utils";
-
-const ERREUR_BLOB =
-  "Stockage Vercel Blob non configuré. Sur Vercel : Storage → Create → Blob, connecte le store au projet, puis redéploie.";
+import { commitFichiers, githubConfigured, type FichierCommit } from "../github-utils";
 
 const polesValides = new Set<string>(poles.map((p) => p.id));
 
@@ -59,6 +55,10 @@ function validerProjet(raw: unknown): Omit<Projet, "slug"> | { erreur: string } 
   };
 }
 
+function jsonProjets(liste: Projet[]): string {
+  return JSON.stringify({ projets: liste }, null, 2) + "\n";
+}
+
 /** Créer (sans slugOriginal) ou modifier (avec slugOriginal) un projet. */
 export async function PUT(req: Request) {
   const err = checkAuth(req);
@@ -74,13 +74,13 @@ export async function PUT(req: Request) {
   if ("erreur" in valide) {
     return NextResponse.json({ error: valide.erreur }, { status: 400 });
   }
-  if (!blobConfigured()) return NextResponse.json({ error: ERREUR_BLOB }, { status: 503 });
+  if (!githubConfigured()) return NextResponse.json({ error: ERREUR_GITHUB }, { status: 503 });
 
-  // L'état courant du panel prime sur une relecture (aucune course possible)
+  // L'état courant du panel prime sur une relecture
   const base = Array.isArray(body?.base)
     ? normaliseProjets({ projets: body.base }) ?? []
     : null;
-  const liste = base !== null ? base : await lireProjets();
+  const liste = base !== null && base.length > 0 ? base : await lireProjets();
 
   if (typeof body?.slugOriginal === "string") {
     // Modification : le slug (donc l'URL et les images liées) ne change pas
@@ -94,16 +94,25 @@ export async function PUT(req: Request) {
     liste.push({ slug, ...valide });
   }
 
-  await ecrireProjets(liste);
-  revaliderSite();
+  try {
+    await commitFichiers(`contenu: projet « ${valide.titre} »`, [
+      { chemin: CHEMIN_PROJETS, contenuTexte: jsonProjets(liste) },
+    ]);
+  } catch (e) {
+    return NextResponse.json(
+      { error: e instanceof Error ? e.message : "Publication impossible." },
+      { status: 502 }
+    );
+  }
+
   return NextResponse.json({ ok: true, projets: liste });
 }
 
-/** Supprimer un projet + ses images (cover et galerie) sur le Blob. */
+/** Supprimer un projet + ses images (cover et galerie) du dépôt. */
 export async function DELETE(req: Request) {
   const err = checkAuth(req);
   if (err) return NextResponse.json({ error: err.error }, { status: err.status });
-  if (!blobConfigured()) return NextResponse.json({ error: ERREUR_BLOB }, { status: 503 });
+  if (!githubConfigured()) return NextResponse.json({ error: ERREUR_GITHUB }, { status: 503 });
 
   const body = (await req.json().catch(() => null)) as {
     slug?: string;
@@ -117,32 +126,38 @@ export async function DELETE(req: Request) {
   const base = Array.isArray(body.base)
     ? normaliseProjets({ projets: body.base }) ?? []
     : null;
-  const liste = base !== null ? base : await lireProjets();
+  const liste = base !== null && base.length > 0 ? base : await lireProjets();
   const restants = liste.filter((p) => p.slug !== body.slug);
   if (restants.length === liste.length) {
     return NextResponse.json({ error: "Projet introuvable." }, { status: 404 });
   }
 
-  // Nettoyage des images associées dans le manifeste + fichiers Blob
+  // Nettoyage des images associées : manifeste + fichiers du dépôt
   const manifest = normaliseManifest(body.baseManifest) ?? (await lireManifest());
   const slotCover = `projet.${body.slug}.cover`;
-  const aSupprimer = [
-    manifest.slots[slotCover],
-    ...(manifest.galeries[body.slug] ?? []),
-  ].filter((src): src is string => Boolean(src && estUrlBlob(src)));
+  const sources = [manifest.slots[slotCover], ...(manifest.galeries[body.slug] ?? [])];
+  const aCommiter: FichierCommit[] = [];
+  for (const src of sources) {
+    const chemin = src ? cheminRepoImage(src) : null;
+    if (chemin) aCommiter.push({ chemin, supprimer: true });
+  }
   delete manifest.slots[slotCover];
   delete manifest.galeries[body.slug];
 
-  await ecrireProjets(restants);
-  await ecrireManifest(manifest);
-  for (const src of aSupprimer) {
-    try {
-      await del(src);
-    } catch {
-      // fichier déjà absent : sans impact
-    }
+  aCommiter.push({ chemin: CHEMIN_PROJETS, contenuTexte: jsonProjets(restants) });
+  aCommiter.push({
+    chemin: CHEMIN_MANIFEST,
+    contenuTexte: JSON.stringify(manifest, null, 2) + "\n",
+  });
+
+  try {
+    await commitFichiers(`contenu: suppression du projet ${body.slug}`, aCommiter);
+  } catch (e) {
+    return NextResponse.json(
+      { error: e instanceof Error ? e.message : "Publication impossible." },
+      { status: 502 }
+    );
   }
 
-  revaliderSite();
   return NextResponse.json({ ok: true, projets: restants, manifest });
 }
