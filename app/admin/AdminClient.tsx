@@ -132,6 +132,7 @@ function EditeurProjet({
   manifest,
   busy,
   ouvert,
+  voirSrc,
   onToggleEdition,
   onUpload,
   onDeleteImage,
@@ -142,6 +143,7 @@ function EditeurProjet({
   manifest: ImagesManifest;
   busy: boolean;
   ouvert: boolean;
+  voirSrc: (src: string) => string;
   onToggleEdition: () => void;
   onUpload: (cible: { slot?: string; galerie?: string }, files: FileList | null) => void;
   onDeleteImage: (payload: { slot?: string; galerie?: string; src?: string }) => void;
@@ -200,7 +202,7 @@ function EditeurProjet({
 
       {/* Image principale */}
       <div className="mt-4 flex items-center gap-4">
-        <Apercu src={cover} />
+        <Apercu src={cover ? voirSrc(cover) : null} />
         <div className="flex flex-col gap-2">
           <p className="text-xs text-doux">
             Image principale — cartes de l&apos;accueil + page dédiée
@@ -243,7 +245,7 @@ function EditeurProjet({
               <div key={src} className="group relative">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src={src}
+                  src={voirSrc(src)}
                   alt=""
                   className="h-20 w-28 rounded-lg border border-white/10 object-cover"
                 />
@@ -277,6 +279,11 @@ export default function AdminClient() {
   const [message, setMessage] = useState<string | null>(null);
   const [enEdition, setEnEdition] = useState<string | null>(null); // slug en cours d'édition
   const [creation, setCreation] = useState(false); // formulaire « nouveau projet » ouvert
+  // Aperçus locaux des images envoyées dans cette session : le fichier
+  // n'existe sur le site qu'après le redéploiement (~1 min), on affiche
+  // donc la copie locale en attendant
+  const [apercusLocaux, setApercusLocaux] = useState<Record<string, string>>({});
+  const voirSrc = (src: string) => apercusLocaux[src] ?? src;
 
   const refresh = useCallback(async (motDePasse: string) => {
     const res = await fetch("/api/admin/state", {
@@ -350,7 +357,7 @@ export default function AdminClient() {
     let manifestCourant = manifest;
 
     // 1. Validation + compression de tous les fichiers
-    const prepares: { ext: string; donneesBase64: string }[] = [];
+    const prepares: { ext: string; donneesBase64: string; apercu: string }[] = [];
     for (const file of Array.from(files)) {
       const ext = (file.name.includes(".") ? file.name.split(".").pop()! : "").toLowerCase();
       if (!EXTENSIONS_OK.has(ext)) {
@@ -371,7 +378,7 @@ export default function AdminClient() {
         erreur = `« ${file.name} » reste trop lourd même compressé (max ~2 Mo pour un GIF/SVG).`;
         break;
       }
-      prepares.push({ ext: extFinale, donneesBase64 });
+      prepares.push({ ext: extFinale, donneesBase64, apercu: URL.createObjectURL(corps) });
     }
 
     // 2. Envoi par lots (≤ 3 Mo par requête), un commit par lot
@@ -396,7 +403,7 @@ export default function AdminClient() {
             method: "POST",
             headers: { "Content-Type": "application/json", "x-admin-password": pwd },
             body: JSON.stringify({
-              fichiers: l,
+              fichiers: l.map(({ ext, donneesBase64 }) => ({ ext, donneesBase64 })),
               slot: cible.slot,
               galerie: cible.galerie,
               base: manifestCourant,
@@ -410,6 +417,16 @@ export default function AdminClient() {
           if (data?.manifest) {
             manifestCourant = data.manifest;
             setManifest(data.manifest);
+          }
+          // Aperçu instantané : copie locale affichée en attendant le déploiement
+          if (Array.isArray(data?.srcs)) {
+            setApercusLocaux((prec) => {
+              const maj = { ...prec };
+              (data.srcs as string[]).forEach((src, i) => {
+                if (l[i]) maj[src] = l[i].apercu;
+              });
+              return maj;
+            });
           }
         } catch (e) {
           erreur = e instanceof Error ? e.message : "Erreur pendant l'upload.";
@@ -646,7 +663,7 @@ export default function AdminClient() {
                 qu&apos;aucune image n&apos;est définie, le hero s&apos;affiche sans portrait.
               </p>
               <div className="mt-4 flex items-center gap-4">
-                <Apercu src={portrait} large />
+                <Apercu src={portrait ? voirSrc(portrait) : null} large />
                 <div className="flex flex-col gap-2">
                   <BoutonFichier
                     label={portrait ? "Remplacer" : "Ajouter"}
@@ -696,7 +713,7 @@ export default function AdminClient() {
                     <div key={src} className="group relative">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
-                        src={src}
+                        src={voirSrc(src)}
                         alt=""
                         className="h-14 w-28 rounded-lg border border-white/10 bg-white/5 object-contain p-2"
                       />
@@ -751,6 +768,7 @@ export default function AdminClient() {
                   manifest={manifest}
                   busy={busy}
                   ouvert={enEdition === p.slug}
+                  voirSrc={voirSrc}
                   onToggleEdition={() => {
                     setEnEdition(enEdition === p.slug ? null : p.slug);
                     setCreation(false);

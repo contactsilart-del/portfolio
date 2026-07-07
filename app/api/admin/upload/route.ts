@@ -69,6 +69,7 @@ export async function POST(req: Request) {
   // Base : l'état courant du panel prime (issu de la dernière réponse serveur)
   const manifest = normaliseManifest(body.base) ?? (await lireManifest());
   const aCommiter: FichierCommit[] = [];
+  const srcs: string[] = [];
 
   const prefixe = (slot ?? `galerie-${galerie}`)
     .toLowerCase()
@@ -78,6 +79,7 @@ export async function POST(req: Request) {
   fichiers.forEach((f, i) => {
     const nomFichier = `${prefixe}-${Date.now()}-${i}.${(f.ext as string).toLowerCase()}`;
     const src = `/images/${nomFichier}`;
+    srcs.push(src);
     aCommiter.push({
       chemin: `${DOSSIER_IMAGES}/${nomFichier}`,
       contenuBase64: f.donneesBase64,
@@ -109,5 +111,7 @@ export async function POST(req: Request) {
     );
   }
 
-  return NextResponse.json({ ok: true, manifest });
+  // srcs (même ordre que les fichiers reçus) : permet au panel d'afficher
+  // un aperçu local instantané sans attendre le redéploiement
+  return NextResponse.json({ ok: true, manifest, srcs });
 }
