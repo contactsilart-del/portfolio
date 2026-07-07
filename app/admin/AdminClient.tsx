@@ -10,6 +10,44 @@ import ProjetForm, { type ProjetPayload } from "./ProjetForm";
 const PWD_KEY = "silart-admin-pwd";
 const EXTENSIONS_OK = new Set(["jpg", "jpeg", "png", "webp", "gif", "avif", "svg"]);
 const MAX_UPLOAD = 25 * 1024 * 1024; // 25 Mo
+const MAX_DIMENSION = 2400; // px — largement suffisant pour un affichage web
+
+/**
+ * Compresse une image dans le navigateur avant l'upload : redimensionnée
+ * à 2400 px max et ré-encodée en WebP. Divise le poids par ~10-20 →
+ * stockage et transfert Blob économisés (limités sur le plan gratuit),
+ * et site plus rapide. SVG (vectoriel) et GIF (animation) partent tels quels.
+ */
+async function compresserImage(
+  file: File
+): Promise<{ corps: Blob | File; ext: string; type: string }> {
+  const extOrig = (file.name.includes(".") ? file.name.split(".").pop()! : "").toLowerCase();
+  const original = { corps: file, ext: extOrig, type: file.type || "" };
+  if (extOrig === "svg" || extOrig === "gif") return original;
+  try {
+    const bitmap = await createImageBitmap(file);
+    const echelle = Math.min(1, MAX_DIMENSION / Math.max(bitmap.width, bitmap.height));
+    const w = Math.max(1, Math.round(bitmap.width * echelle));
+    const h = Math.max(1, Math.round(bitmap.height * echelle));
+    const canvas = document.createElement("canvas");
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return original;
+    ctx.drawImage(bitmap, 0, 0, w, h);
+    bitmap.close();
+    const blob = await new Promise<Blob | null>((resolve) =>
+      canvas.toBlob(resolve, "image/webp", 0.85)
+    );
+    // On ne garde la version compressée que si elle est vraiment plus légère
+    if (blob && blob.size < file.size) {
+      return { corps: blob, ext: "webp", type: "image/webp" };
+    }
+  } catch {
+    // format non décodable par le navigateur : on envoie l'original
+  }
+  return original;
+}
 
 type Configured = { password: boolean; blob: boolean };
 type Statut = "chargement" | "login" | "config" | "ok";
@@ -317,15 +355,17 @@ export default function AdminClient() {
           .toLowerCase()
           .replace(/[^a-z0-9-]+/g, "-")
           .replace(/^-+|-+$/g, "");
-        // 1. Le fichier part directement du navigateur vers le Blob
-        const blob = await blobUpload(`images/${base}-${Date.now()}.${ext}`, file, {
+        // 1. Compression dans le navigateur (WebP, 2400 px max)
+        const { corps, ext: extFinale, type } = await compresserImage(file);
+        // 2. Le fichier part directement du navigateur vers le Blob
+        const blob = await blobUpload(`images/${base}-${Date.now()}.${extFinale}`, corps, {
           access: "public",
           handleUploadUrl: "/api/admin/upload-token",
           clientPayload: JSON.stringify({ mdp: pwd }),
-          contentType: file.type || undefined,
-          multipart: file.size > 8 * 1024 * 1024,
+          contentType: type || undefined,
+          multipart: corps.size > 8 * 1024 * 1024,
         });
-        // 2. Puis on le rattache au manifeste du site
+        // 3. Puis on le rattache au manifeste du site
         const res = await fetch("/api/admin/attach", {
           method: "POST",
           headers: { "Content-Type": "application/json", "x-admin-password": pwd },
