@@ -1,4 +1,8 @@
 {
   "slots": {},
-  "galeries": {}
+  "galeries": {
+    "logos_clients": [
+      "/images/galerie-logos-clients-1783413924153-0.webp"
+    ]
+  }
 }
