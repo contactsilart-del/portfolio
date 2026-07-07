@@ -10,6 +10,7 @@ import AnimatedText from "@/app/components/AnimatedText";
 import MarqueeSection from "@/app/components/MarqueeSection";
 import ProjectsStack from "@/app/components/ProjectsStack";
 import LogosClients from "@/app/components/LogosClients";
+import Forme3D from "@/app/components/Forme3D";
 
 const liensNav = [
   { href: "#projets", label: "Projets" },
@@ -62,7 +63,7 @@ const coins3d = [
   {
     slot: "apropos.forme-1",
     defaut: "/images/3d/forme-1.svg",
-    classes: "left-[6%] top-[2%] lg:left-[8%] lg:top-[18%]",
+    classes: "left-[6%] top-[2%] lg:left-[5%] lg:top-[16%]",
     delay: 0.2,
     x: -60,
     duree: "5.6s",
@@ -70,7 +71,7 @@ const coins3d = [
   {
     slot: "apropos.forme-2",
     defaut: "/images/3d/forme-2.svg",
-    classes: "right-[6%] top-[3.5%] lg:right-[8%] lg:top-[20%]",
+    classes: "right-[6%] top-[3.5%] lg:right-[5%] lg:top-[18%]",
     delay: 0.3,
     x: 60,
     duree: "6.4s",
@@ -78,7 +79,7 @@ const coins3d = [
   {
     slot: "apropos.forme-3",
     defaut: "/images/3d/forme-3.svg",
-    classes: "bottom-[2%] left-[8%] lg:bottom-auto lg:left-[7%] lg:top-[46%]",
+    classes: "bottom-[2%] left-[8%] lg:bottom-auto lg:left-[4%] lg:top-[48%]",
     delay: 0.4,
     x: -60,
     duree: "7s",
@@ -86,7 +87,7 @@ const coins3d = [
   {
     slot: "apropos.forme-4",
     defaut: "/images/3d/forme-4.svg",
-    classes: "bottom-[3.5%] right-[8%] lg:bottom-auto lg:right-[7%] lg:top-[44%]",
+    classes: "bottom-[3.5%] right-[8%] lg:bottom-auto lg:right-[4%] lg:top-[46%]",
     delay: 0.5,
     x: 60,
     duree: "6s",
@@ -217,16 +218,7 @@ export default async function Home() {
             duration={0.9}
             className={`pointer-events-none absolute z-10 ${c.classes}`}
           >
-            <Magnet padding={110} strength={3}>
-              <div className="flottant" style={{ "--flotte-duree": c.duree } as React.CSSProperties}>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={slotImage(manifest, c.slot) ?? c.defaut}
-                  alt=""
-                  className="w-14 drop-shadow-[0_12px_24px_rgba(0,0,0,0.45)] sm:w-16 lg:w-28"
-                />
-              </div>
-            </Magnet>
+            <Forme3D src={slotImage(manifest, c.slot) ?? c.defaut} duree={c.duree} />
           </FadeIn>
         ))}
 
