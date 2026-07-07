@@ -168,23 +168,6 @@
       "lienLabel": "Voir le site"
     },
     {
-      "slug": "portfolio-wordpress",
-      "titre": "Portfolio WordPress",
-      "pole": "dev",
-      "type": "Portfolio sous WordPress",
-      "resume": "Portfolio réalisé avec WordPress, pour explorer la création de site via CMS.",
-      "description": [
-        "Ce portfolio a été réalisé sous WordPress, en complément de mes portfolios codés à la main. Il m'a permis d'approfondir la personnalisation de thèmes et la gestion de contenu via un CMS."
-      ],
-      "tags": [
-        "WordPress",
-        "CMS",
-        "Portfolio"
-      ],
-      "lien": "https://clamensalbertsilas.mmiweb.iut-tlse3.fr/Book/",
-      "lienLabel": "Voir le site"
-    },
-    {
       "slug": "food-tarn",
       "titre": "FoodTarn",
       "pole": "branding",
