@@ -49,6 +49,47 @@ const services = [
   },
 ];
 
+/**
+ * Éléments 3D flottants aux coins de la section À propos.
+ * Remplaçables via /admin (onglet Accueil) ; formes d'exemple par défaut.
+ * Positionnés hors du texte au repos — le Magnet et le flottement peuvent
+ * les faire passer dessus, sans jamais bloquer la souris (pointer-events).
+ */
+const coins3d = [
+  {
+    slot: "apropos.forme-1",
+    defaut: "/images/3d/forme-1.svg",
+    classes: "left-[8%] top-[18%]",
+    delay: 0.2,
+    x: -60,
+    duree: "5.6s",
+  },
+  {
+    slot: "apropos.forme-2",
+    defaut: "/images/3d/forme-2.svg",
+    classes: "right-[8%] top-[20%]",
+    delay: 0.3,
+    x: 60,
+    duree: "6.4s",
+  },
+  {
+    slot: "apropos.forme-3",
+    defaut: "/images/3d/forme-3.svg",
+    classes: "left-[7%] top-[46%]",
+    delay: 0.4,
+    x: -60,
+    duree: "7s",
+  },
+  {
+    slot: "apropos.forme-4",
+    defaut: "/images/3d/forme-4.svg",
+    classes: "right-[7%] top-[44%]",
+    delay: 0.5,
+    x: 60,
+    duree: "6s",
+  },
+];
+
 const pilulesApropos = [
   {
     texte: "Next.js & React",
@@ -163,6 +204,29 @@ export default async function Home() {
         id="apropos"
         className="relative flex min-h-screen flex-col items-center justify-center px-5 py-20 sm:px-8 md:px-10"
       >
+        {/* Éléments 3D flottants en coins (gérés via /admin) */}
+        {coins3d.map((c) => (
+          <FadeIn
+            key={c.slot}
+            delay={c.delay}
+            x={c.x}
+            y={0}
+            duration={0.9}
+            className={`pointer-events-none absolute z-10 hidden lg:block ${c.classes}`}
+          >
+            <Magnet padding={110} strength={3}>
+              <div className="flottant" style={{ "--flotte-duree": c.duree } as React.CSSProperties}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={slotImage(manifest, c.slot) ?? c.defaut}
+                  alt=""
+                  className="w-20 drop-shadow-[0_12px_24px_rgba(0,0,0,0.45)] lg:w-28"
+                />
+              </div>
+            </Magnet>
+          </FadeIn>
+        ))}
+
         {/* Pilules décoratives en coins */}
         {pilulesApropos.map((p) => (
           <FadeIn

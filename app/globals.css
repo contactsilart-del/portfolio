@@ -51,6 +51,26 @@
   }
 }
 
+/* Éléments 3D flottants (coins de la section À propos) */
+@keyframes flotte {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-16px);
+  }
+}
+.flottant {
+  animation: flotte var(--flotte-duree, 6s) ease-in-out infinite;
+  will-change: transform;
+}
+@media (prefers-reduced-motion: reduce) {
+  .flottant {
+    animation: none;
+  }
+}
+
 /* Bande « Ils me font confiance » : défilement continu des logos */
 @keyframes logos-defile {
   from {

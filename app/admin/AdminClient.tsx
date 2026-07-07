@@ -71,6 +71,14 @@ const ONGLETS: { id: "accueil" | Pole; label: string }[] = [
   ...poles.map((p) => ({ id: p.id, label: p.titre })),
 ];
 
+/* Éléments 3D flottants de la section « À propos » (formes d'exemple par défaut) */
+const FORMES_3D: { slot: string; label: string }[] = [
+  { slot: "apropos.forme-1", label: "Haut gauche" },
+  { slot: "apropos.forme-2", label: "Haut droite" },
+  { slot: "apropos.forme-3", label: "Milieu gauche" },
+  { slot: "apropos.forme-4", label: "Milieu droite" },
+];
+
 /* Bouton qui ouvre un sélecteur de fichiers */
 function BoutonFichier({
   label,
@@ -680,6 +688,51 @@ export default function AdminClient() {
                     </button>
                   )}
                 </div>
+              </div>
+            </div>
+
+            {/* Éléments 3D de la section À propos */}
+            <div className="carte">
+              <h3 className="text-lg font-semibold text-clair">
+                Éléments 3D — section « À propos »
+              </h3>
+              <p className="mt-1 text-xs text-doux">
+                Quatre visuels flottants sur les côtés de la section (effet magnétique +
+                lévitation). Recommandé : PNG ou WebP détouré (fond transparent),
+                ~400 px. Tant qu&apos;un emplacement est vide, une forme 3D d&apos;exemple
+                s&apos;affiche à la place.
+              </p>
+              <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                {FORMES_3D.map((f) => {
+                  const src = manifest.slots[f.slot] ?? null;
+                  return (
+                    <div
+                      key={f.slot}
+                      className="rounded-2xl border border-white/10 bg-nuit/60 p-4"
+                    >
+                      <p className="text-xs uppercase tracking-wider text-doux">{f.label}</p>
+                      <div className="mt-3 flex items-center gap-4">
+                        <Apercu src={src ? voirSrc(src) : null} />
+                        <div className="flex flex-col gap-2">
+                          <BoutonFichier
+                            label={src ? "Remplacer" : "Ajouter"}
+                            disabled={busy}
+                            onFiles={(files) => upload({ slot: f.slot }, files)}
+                          />
+                          {src && (
+                            <button
+                              type="button"
+                              onClick={() => supprimerImage({ slot: f.slot })}
+                              className="text-left text-xs text-red-400/80 transition-colors hover:text-red-400"
+                            >
+                              Supprimer
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
 

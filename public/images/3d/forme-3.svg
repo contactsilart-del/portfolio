@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" fill="none">
+  <defs>
+    <linearGradient id="tore" x1="0%" y1="0%" x2="30%" y2="100%">
+      <stop offset="0%" stop-color="#e6eef4"/>
+      <stop offset="55%" stop-color="#8f9aa8"/>
+      <stop offset="100%" stop-color="#3f4450"/>
+    </linearGradient>
+  </defs>
+  <g transform="rotate(-22 60 60)">
+    <ellipse cx="60" cy="60" rx="44" ry="27" stroke="url(#tore)" stroke-width="19" fill="none"/>
+    <path d="M 25 47 A 42 26 0 0 1 74 36" stroke="#ffffff" stroke-width="4" opacity="0.4" fill="none" stroke-linecap="round"/>
+    <path d="M 98 72 A 43 26 0 0 1 74 84" stroke="#b600a8" stroke-width="4" opacity="0.5" fill="none" stroke-linecap="round"/>
+  </g>
+</svg>
