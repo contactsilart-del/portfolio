@@ -293,6 +293,9 @@ export default function AdminClient() {
     setBusy(true);
     setMessage(null);
     let erreur: string | null = null;
+    // Chaque rattachement part de l'état renvoyé par le précédent :
+    // aucun ajout ne peut en écraser un autre
+    let manifestCourant = manifest;
 
     for (const file of Array.from(files)) {
       const ext = (file.name.includes(".") ? file.name.split(".").pop()! : "").toLowerCase();
@@ -326,14 +329,22 @@ export default function AdminClient() {
         const res = await fetch("/api/admin/attach", {
           method: "POST",
           headers: { "Content-Type": "application/json", "x-admin-password": pwd },
-          body: JSON.stringify({ url: blob.url, slot: cible.slot, galerie: cible.galerie }),
+          body: JSON.stringify({
+            url: blob.url,
+            slot: cible.slot,
+            galerie: cible.galerie,
+            base: manifestCourant,
+          }),
         });
         const data = await res.json().catch(() => null);
         if (!res.ok) {
           erreur = data?.error ?? "Erreur pendant la publication.";
           break;
         }
-        if (data?.manifest) setManifest(data.manifest);
+        if (data?.manifest) {
+          manifestCourant = data.manifest;
+          setManifest(data.manifest);
+        }
       } catch (e) {
         erreur = e instanceof Error ? e.message : "Erreur pendant l'upload.";
         break;
@@ -355,7 +366,7 @@ export default function AdminClient() {
     const res = await fetch("/api/admin/delete", {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-admin-password": pwd },
-      body: JSON.stringify(payload),
+      body: JSON.stringify({ ...payload, base: manifest }),
     });
     const data = await res.json().catch(() => null);
     if (res.ok && data?.manifest) {
@@ -376,20 +387,21 @@ export default function AdminClient() {
     const res = await fetch("/api/admin/projets", {
       method: "PUT",
       headers: { "Content-Type": "application/json", "x-admin-password": pwd },
-      body: JSON.stringify({ projet, slugOriginal }),
+      body: JSON.stringify({ projet, slugOriginal, base: projets }),
     });
-    const err = res.ok ? null : (await res.json().catch(() => null))?.error;
-    await refresh(pwd);
-    if (!err) {
+    const data = await res.json().catch(() => null);
+    if (res.ok && Array.isArray(data?.projets)) {
+      setProjets(data.projets);
       setEnEdition(null);
       setCreation(false);
-    }
-    setMessage(
-      err ??
-        (slugOriginal
+      setMessage(
+        slugOriginal
           ? "Projet enregistré ✓ — le site public est à jour."
-          : "Projet créé ✓ — pense à lui ajouter une image.")
-    );
+          : "Projet créé ✓ — pense à lui ajouter une image."
+      );
+    } else {
+      setMessage(`⚠️ ${data?.error ?? "Erreur pendant l'enregistrement."}`);
+    }
     setBusy(false);
   }
 
@@ -406,11 +418,16 @@ export default function AdminClient() {
     const res = await fetch("/api/admin/projets", {
       method: "DELETE",
       headers: { "Content-Type": "application/json", "x-admin-password": pwd },
-      body: JSON.stringify({ slug: projet.slug }),
+      body: JSON.stringify({ slug: projet.slug, base: projets, baseManifest: manifest }),
     });
-    const err = res.ok ? null : (await res.json().catch(() => null))?.error;
-    await refresh(pwd);
-    setMessage(err ?? "Projet supprimé ✓ — le site public est à jour.");
+    const data = await res.json().catch(() => null);
+    if (res.ok && Array.isArray(data?.projets)) {
+      setProjets(data.projets);
+      if (data.manifest) setManifest(data.manifest);
+      setMessage("Projet supprimé ✓ — le site public est à jour.");
+    } else {
+      setMessage(`⚠️ ${data?.error ?? "Erreur pendant la suppression."}`);
+    }
     setBusy(false);
   }
 

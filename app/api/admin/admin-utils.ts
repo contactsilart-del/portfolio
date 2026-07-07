@@ -1,12 +1,25 @@
 import crypto from "crypto";
-import { list, put } from "@vercel/blob";
+import { del, list, put } from "@vercel/blob";
 import { revalidatePath, revalidateTag } from "next/cache";
-import { manifestVide, type ImagesManifest } from "@/app/data/images";
+import { manifestVide, normaliseManifest, type ImagesManifest } from "@/app/data/images";
 import { projetsDefaut, type Projet } from "@/app/data/projets";
 import { normaliseProjets } from "@/app/data/projets-server";
 
-export const MANIFEST_BLOB = "manifest.json";
-export const PROJETS_BLOB = "projets.json";
+/**
+ * Les données (manifeste images, projets) sont stockées en fichiers
+ * VERSIONNÉS : chaque écriture crée un nouveau fichier à l'URL unique
+ * (manifest/<timestamp>-<aléa>.json). Jamais de réécriture au même
+ * emplacement → jamais de copie périmée servie par le CDN du Blob
+ * (l'écrasement d'un même fichier pouvait être caché ~60 s, ce qui
+ * faisait « ressusciter » des images supprimées ou perdre des ajouts).
+ * Les anciens fichiers racine (manifest.json / projets.json) restent
+ * lus en fallback tant qu'aucune version n'existe.
+ */
+export const MANIFEST_PREFIX = "manifest/";
+export const MANIFEST_LEGACY = "manifest.json";
+export const PROJETS_PREFIX = "projets/";
+export const PROJETS_LEGACY = "projets.json";
+const VERSIONS_GARDEES = 4;
 
 /** Régénère toutes les pages qui dépendent des images ou des projets. */
 export function revaliderSite() {
@@ -56,29 +69,59 @@ export function checkAuth(req: Request): { status: number; error: string } | nul
   return null;
 }
 
-/** Lecture fraîche du manifeste depuis le Blob (sans cache). */
-export async function lireManifest(): Promise<ImagesManifest> {
-  if (!blobConfigured()) return manifestVide;
+/** Dernière version d'un document versionné (fallback fichier racine hérité). */
+export async function lireDernierJson(prefix: string, legacy: string): Promise<unknown> {
   try {
-    const { blobs } = await list({ prefix: MANIFEST_BLOB, limit: 1 });
-    if (blobs.length === 0) return manifestVide;
-    const res = await fetch(`${blobs[0].url}?v=${Date.now()}`, { cache: "no-store" });
-    if (!res.ok) return manifestVide;
-    const raw = (await res.json()) as Partial<ImagesManifest>;
-    return { slots: raw.slots ?? {}, galeries: raw.galeries ?? {} };
+    const { blobs } = await list({ prefix });
+    let cible =
+      blobs.length > 0
+        ? blobs.reduce((a, b) => (a.pathname > b.pathname ? a : b))
+        : null;
+    if (!cible) {
+      const l = await list({ prefix: legacy, limit: 1 });
+      cible = l.blobs[0] ?? null;
+    }
+    if (!cible) return null;
+    const res = await fetch(`${cible.url}?v=${Date.now()}`, { cache: "no-store" });
+    if (!res.ok) return null;
+    return await res.json();
   } catch {
-    return manifestVide;
+    return null;
   }
 }
 
-export async function ecrireManifest(m: ImagesManifest): Promise<void> {
-  await put(MANIFEST_BLOB, JSON.stringify(m, null, 2), {
+/** Écrit une nouvelle version (URL unique) puis purge les plus anciennes. */
+export async function ecrireJsonVersionne(prefix: string, data: unknown): Promise<void> {
+  // Timestamp 13 chiffres : l'ordre lexicographique = l'ordre chronologique
+  const nom = `${prefix}${Date.now()}-${Math.random().toString(36).slice(2, 8)}.json`;
+  await put(nom, JSON.stringify(data, null, 2), {
     access: "public",
     addRandomSuffix: false,
-    allowOverwrite: true,
     contentType: "application/json",
     cacheControlMaxAge: 60,
   });
+  try {
+    const { blobs } = await list({ prefix });
+    const vieux = blobs
+      .sort((a, b) => (a.pathname > b.pathname ? -1 : 1))
+      .slice(VERSIONS_GARDEES);
+    if (vieux.length > 0) await del(vieux.map((b) => b.url));
+  } catch {
+    // purge ratée : versions orphelines sans impact (re-purgées au prochain écrit)
+  }
+}
+
+/** Lecture fraîche du manifeste depuis le Blob (sans cache). */
+export async function lireManifest(): Promise<ImagesManifest> {
+  if (!blobConfigured()) return manifestVide;
+  return (
+    normaliseManifest(await lireDernierJson(MANIFEST_PREFIX, MANIFEST_LEGACY)) ??
+    manifestVide
+  );
+}
+
+export async function ecrireManifest(m: ImagesManifest): Promise<void> {
+  await ecrireJsonVersionne(MANIFEST_PREFIX, m);
 }
 
 /** Ne supprime que des fichiers hébergés sur Vercel Blob. */
@@ -95,25 +138,12 @@ export function estUrlBlob(src: string): boolean {
  */
 export async function lireProjets(): Promise<Projet[]> {
   if (!blobConfigured()) return projetsDefaut;
-  try {
-    const { blobs } = await list({ prefix: PROJETS_BLOB, limit: 1 });
-    if (blobs.length === 0) return projetsDefaut;
-    const res = await fetch(`${blobs[0].url}?v=${Date.now()}`, { cache: "no-store" });
-    if (!res.ok) return projetsDefaut;
-    return normaliseProjets(await res.json()) ?? projetsDefaut;
-  } catch {
-    return projetsDefaut;
-  }
+  const raw = await lireDernierJson(PROJETS_PREFIX, PROJETS_LEGACY);
+  return raw === null ? projetsDefaut : normaliseProjets(raw) ?? projetsDefaut;
 }
 
 export async function ecrireProjets(liste: Projet[]): Promise<void> {
-  await put(PROJETS_BLOB, JSON.stringify({ projets: liste }, null, 2), {
-    access: "public",
-    addRandomSuffix: false,
-    allowOverwrite: true,
-    contentType: "application/json",
-    cacheControlMaxAge: 60,
-  });
+  await ecrireJsonVersionne(PROJETS_PREFIX, { projets: liste });
 }
 
 /** Slug URL propre à partir d'un titre : accents retirés, unicité garantie. */

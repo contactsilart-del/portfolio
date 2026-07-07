@@ -44,10 +44,19 @@ export function normaliseProjets(raw: unknown): Projet[] | null {
 export async function getProjets(): Promise<Projet[]> {
   if (process.env.BLOB_READ_WRITE_TOKEN) {
     try {
-      const { blobs } = await list({ prefix: "projets.json", limit: 1 });
-      if (blobs.length === 0) return projetsDefaut;
-      // ?v=… : contourne le cache CDN du Blob à chaque régénération
-      const res = await fetch(`${blobs[0].url}?v=${Date.now()}`, {
+      // Dernière version (projets/<timestamp>-….json : URL unique à chaque
+      // écriture, donc jamais de copie périmée), fallback projets.json racine
+      const { blobs } = await list({ prefix: "projets/" });
+      let cible =
+        blobs.length > 0
+          ? blobs.reduce((a, b) => (a.pathname > b.pathname ? a : b))
+          : null;
+      if (!cible) {
+        const l = await list({ prefix: "projets.json", limit: 1 });
+        cible = l.blobs[0] ?? null;
+      }
+      if (!cible) return projetsDefaut;
+      const res = await fetch(cible.url, {
         next: { tags: ["projets-data"] },
       });
       if (res.ok) {

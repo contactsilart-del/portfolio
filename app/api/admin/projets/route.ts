@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { del } from "@vercel/blob";
 import { poles, type Pole, type Projet } from "@/app/data/projets";
+import { normaliseProjets } from "@/app/data/projets-server";
+import { normaliseManifest } from "@/app/data/images";
 import {
   blobConfigured,
   checkAuth,
@@ -65,6 +67,7 @@ export async function PUT(req: Request) {
   const body = (await req.json().catch(() => null)) as {
     projet?: unknown;
     slugOriginal?: string;
+    base?: unknown;
   } | null;
 
   const valide = validerProjet(body?.projet);
@@ -73,7 +76,11 @@ export async function PUT(req: Request) {
   }
   if (!blobConfigured()) return NextResponse.json({ error: ERREUR_BLOB }, { status: 503 });
 
-  const liste = await lireProjets();
+  // L'état courant du panel prime sur une relecture (aucune course possible)
+  const base = Array.isArray(body?.base)
+    ? normaliseProjets({ projets: body.base }) ?? []
+    : null;
+  const liste = base !== null ? base : await lireProjets();
 
   if (typeof body?.slugOriginal === "string") {
     // Modification : le slug (donc l'URL et les images liées) ne change pas
@@ -98,19 +105,26 @@ export async function DELETE(req: Request) {
   if (err) return NextResponse.json({ error: err.error }, { status: err.status });
   if (!blobConfigured()) return NextResponse.json({ error: ERREUR_BLOB }, { status: 503 });
 
-  const body = (await req.json().catch(() => null)) as { slug?: string } | null;
+  const body = (await req.json().catch(() => null)) as {
+    slug?: string;
+    base?: unknown;
+    baseManifest?: unknown;
+  } | null;
   if (!body?.slug) {
     return NextResponse.json({ error: "Slug manquant." }, { status: 400 });
   }
 
-  const liste = await lireProjets();
+  const base = Array.isArray(body.base)
+    ? normaliseProjets({ projets: body.base }) ?? []
+    : null;
+  const liste = base !== null ? base : await lireProjets();
   const restants = liste.filter((p) => p.slug !== body.slug);
   if (restants.length === liste.length) {
     return NextResponse.json({ error: "Projet introuvable." }, { status: 404 });
   }
 
   // Nettoyage des images associées dans le manifeste + fichiers Blob
-  const manifest = await lireManifest();
+  const manifest = normaliseManifest(body.baseManifest) ?? (await lireManifest());
   const slotCover = `projet.${body.slug}.cover`;
   const aSupprimer = [
     manifest.slots[slotCover],
@@ -130,5 +144,5 @@ export async function DELETE(req: Request) {
   }
 
   revaliderSite();
-  return NextResponse.json({ ok: true, projets: restants });
+  return NextResponse.json({ ok: true, projets: restants, manifest });
 }

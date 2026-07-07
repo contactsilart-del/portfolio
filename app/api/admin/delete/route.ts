@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { del } from "@vercel/blob";
+import { normaliseManifest } from "@/app/data/images";
 import {
   blobConfigured,
   checkAuth,
@@ -23,13 +24,15 @@ export async function POST(req: Request) {
     slot?: string;
     galerie?: string;
     src?: string;
+    base?: unknown;
   } | null;
 
   if (!body || (typeof body.slot !== "string" && typeof body.galerie !== "string")) {
     return NextResponse.json({ error: "Cible manquante." }, { status: 400 });
   }
 
-  const manifest = await lireManifest();
+  // L'état courant du panel prime sur une relecture (aucune course possible)
+  const manifest = normaliseManifest(body.base) ?? (await lireManifest());
 
   if (typeof body.slot === "string") {
     const src = manifest.slots[body.slot];

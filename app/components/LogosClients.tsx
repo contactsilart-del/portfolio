@@ -5,6 +5,7 @@ import {
   type ImagesManifest,
 } from "@/app/data/images";
 import FadeIn from "./FadeIn";
+import LogoImg from "./LogoImg";
 
 /**
  * Section « Ils me font confiance » : bande de logos en défilement continu.
@@ -22,13 +23,7 @@ export default function LogosClients({ manifest }: { manifest: ImagesManifest })
     <ul className="flex w-max shrink-0 items-center gap-16 pr-16 md:gap-24 md:pr-24">
       {logos.map((src, i) => (
         <li key={`${src}-${i}`} className="shrink-0">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={src}
-            alt=""
-            loading="lazy"
-            className="h-8 w-auto max-w-[180px] opacity-60 grayscale transition duration-300 hover:opacity-100 hover:grayscale-0 md:h-10"
-          />
+          <LogoImg src={src} />
         </li>
       ))}
     </ul>

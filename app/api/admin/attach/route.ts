@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { del } from "@vercel/blob";
+import { normaliseManifest } from "@/app/data/images";
 import {
   blobConfigured,
   checkAuth,
@@ -27,6 +28,7 @@ export async function POST(req: Request) {
     url?: string;
     slot?: string;
     galerie?: string;
+    base?: unknown;
   } | null;
 
   if (!body?.url || !estUrlBlob(body.url)) {
@@ -38,7 +40,9 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Cible manquante (slot ou galerie)." }, { status: 400 });
   }
 
-  const manifest = await lireManifest();
+  // Base : l'état courant du panel (toujours issu de la dernière réponse
+  // serveur) prime sur une relecture, par définition sans course possible.
+  const manifest = normaliseManifest(body.base) ?? (await lireManifest());
   if (slot) {
     const ancienne = manifest.slots[slot];
     if (ancienne && ancienne !== body.url && estUrlBlob(ancienne)) {
