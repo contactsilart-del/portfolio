@@ -56,10 +56,13 @@ const services = [
  * les faire passer dessus, sans jamais bloquer la souris (pointer-events).
  */
 const coins3d = [
+  // Mobile (pas de souris → lévitation seule) : petites formes dans les
+  // zones de marge haut/bas de la section, jamais sur le texte.
+  // Desktop (lg+) : sur les flancs du titre et du paragraphe, + effet magnétique.
   {
     slot: "apropos.forme-1",
     defaut: "/images/3d/forme-1.svg",
-    classes: "left-[8%] top-[18%]",
+    classes: "left-[6%] top-[2%] lg:left-[8%] lg:top-[18%]",
     delay: 0.2,
     x: -60,
     duree: "5.6s",
@@ -67,7 +70,7 @@ const coins3d = [
   {
     slot: "apropos.forme-2",
     defaut: "/images/3d/forme-2.svg",
-    classes: "right-[8%] top-[20%]",
+    classes: "right-[6%] top-[3.5%] lg:right-[8%] lg:top-[20%]",
     delay: 0.3,
     x: 60,
     duree: "6.4s",
@@ -75,7 +78,7 @@ const coins3d = [
   {
     slot: "apropos.forme-3",
     defaut: "/images/3d/forme-3.svg",
-    classes: "left-[7%] top-[46%]",
+    classes: "bottom-[2%] left-[8%] lg:bottom-auto lg:left-[7%] lg:top-[46%]",
     delay: 0.4,
     x: -60,
     duree: "7s",
@@ -83,7 +86,7 @@ const coins3d = [
   {
     slot: "apropos.forme-4",
     defaut: "/images/3d/forme-4.svg",
-    classes: "right-[7%] top-[44%]",
+    classes: "bottom-[3.5%] right-[8%] lg:bottom-auto lg:right-[7%] lg:top-[44%]",
     delay: 0.5,
     x: 60,
     duree: "6s",
@@ -138,7 +141,7 @@ export default async function Home() {
               <a
                 key={l.href}
                 href={l.href}
-                className="text-sm font-medium uppercase tracking-wider text-clair transition-opacity duration-200 hover:opacity-70 md:text-lg lg:text-[1.4rem]"
+                className="text-xs font-medium uppercase tracking-wider text-clair transition-opacity duration-200 hover:opacity-70 sm:text-sm md:text-lg lg:text-[1.4rem]"
               >
                 {l.label}
               </a>
@@ -175,11 +178,11 @@ export default async function Home() {
           </div>
         )}
 
-        {/* Barre du bas */}
-        <div className="z-20 flex items-end justify-between gap-6 px-6 pb-7 sm:pb-8 md:px-10 md:pb-10">
+        {/* Barre du bas — empilée et centrée sur mobile (déborde sinon) */}
+        <div className="z-20 flex flex-col items-center gap-4 px-6 pb-7 text-center sm:flex-row sm:items-end sm:justify-between sm:gap-6 sm:pb-8 sm:text-left md:px-10 md:pb-10">
           <FadeIn delay={0.45} y={20}>
             <p
-              className="max-w-[180px] font-light uppercase leading-snug tracking-wide text-doux sm:max-w-[240px] md:max-w-[300px]"
+              className="max-w-[280px] font-light uppercase leading-snug tracking-wide text-doux sm:max-w-[240px] md:max-w-[300px]"
               style={{ fontSize: "clamp(0.7rem, 1.3vw, 1.25rem)" }}
             >
               designer · développeur · créatif — freelance, en parallèle du BUT
@@ -212,7 +215,7 @@ export default async function Home() {
             x={c.x}
             y={0}
             duration={0.9}
-            className={`pointer-events-none absolute z-10 hidden lg:block ${c.classes}`}
+            className={`pointer-events-none absolute z-10 ${c.classes}`}
           >
             <Magnet padding={110} strength={3}>
               <div className="flottant" style={{ "--flotte-duree": c.duree } as React.CSSProperties}>
@@ -220,7 +223,7 @@ export default async function Home() {
                 <img
                   src={slotImage(manifest, c.slot) ?? c.defaut}
                   alt=""
-                  className="w-20 drop-shadow-[0_12px_24px_rgba(0,0,0,0.45)] lg:w-28"
+                  className="w-14 drop-shadow-[0_12px_24px_rgba(0,0,0,0.45)] sm:w-16 lg:w-28"
                 />
               </div>
             </Magnet>
@@ -376,7 +379,12 @@ export default async function Home() {
             avis honnête et un devis clair.
           </p>
           <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
-            <a href={`mailto:${site.email}`} className="btn-accent">
+            {/* lowercase : l'email en capitales larges déborde sur petit écran */}
+            <a
+              href={`mailto:${site.email}`}
+              className="btn-accent max-w-full"
+              style={{ textTransform: "lowercase" }}
+            >
               {site.email}
             </a>
             <a
@@ -393,11 +401,11 @@ export default async function Home() {
 
       {/* ── Footer ───────────────────────────────────────── */}
       <footer className="border-t border-white/5">
-        <div className="section flex flex-col items-center justify-between gap-3 py-8 text-sm text-doux sm:flex-row">
+        <div className="section flex flex-col items-center justify-between gap-3 py-8 text-center text-sm text-doux sm:flex-row sm:text-left">
           <p>
             © {new Date().getFullYear()} {site.marque} · {site.nom}
           </p>
-          <div className="flex items-center gap-6">
+          <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2">
             <Link
               href="/mentions-legales"
               className="transition-colors hover:text-clair"

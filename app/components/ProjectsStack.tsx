@@ -27,7 +27,9 @@ function CartePole({
 
   return (
     <div
-      className="sticky top-[calc(5rem_+_var(--stack))] h-[85vh] md:top-[calc(6rem_+_var(--stack))]"
+      // Mobile : cartes en flux normal (le contenu dépasse 85vh en une
+      // colonne) ; l'empilement sticky n'existe qu'à partir de md
+      className="mb-6 md:mb-0 md:sticky md:top-[calc(6rem_+_var(--stack))] md:h-[85vh]"
       style={{ "--stack": `${index * 28}px` } as CSSProperties}
     >
       <motion.div
